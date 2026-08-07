@@ -28,6 +28,8 @@ This CLI keeps those decisions visible:
 - state-changing commands provide previews;
 - synchronization defaults to `ff-only` and never guesses how to resolve divergence;
 - live review pushes require confirmation unless `--yes` is explicit;
+- branch integration always creates an explicit merge commit with an included-commit log;
+- existing Gerrit Changes can be amended and uploaded as a new Patch Set without changing Change-Id;
 - JSON output has a stable envelope and never contains ANSI sequences;
 - child processes use argument arrays rather than a shell.
 
@@ -92,6 +94,15 @@ gerrit setup
 # Inspect local review state.
 gerrit status
 
+# Amend staged changes and upload a new Patch Set for the same Gerrit Change.
+git add src/example.ts
+gerrit amend --dry-run
+gerrit amend
+
+# Create a reviewable merge commit from a feature branch.
+gerrit merge feature/login --dry-run
+gerrit merge feature/login
+
 # Preview, then submit a review.
 gerrit review alice,bob --dry-run
 gerrit review alice,bob
@@ -104,12 +115,43 @@ gerrit review alice,bob
 | `doctor [--offline]`             | Check Git, repository, hook, remote, and SSH readiness                       | No                         |
 | `status`                         | Show local branch, upstream, ahead/behind, outgoing commits, and hook status | No                         |
 | `setup [--dry-run]`              | Download and compose the official Gerrit `commit-msg` hook                   | Yes                        |
+| `amend [--dry-run]`              | Update HEAD and upload a new Patch Set for the same Gerrit Change            | Yes                        |
+| `merge [source] [--dry-run]`     | Create an explicit merge commit from a local or remote branch                | Yes                        |
 | `sync [--dry-run]`               | Fetch and synchronize the target branch explicitly                           | Yes                        |
 | `review [reviewers] [--dry-run]` | Preflight, optionally synchronize, and push to `refs/for/*`                  | Yes                        |
 | `open [--print]`                 | Open the Gerrit change referenced by HEAD's Change-Id                        | Opens a browser            |
 | `hook run <file>`                | Adapter for Husky and other hook managers                                    | Updates the commit message |
 
 Run `gerrit <command> --help` for the full option contract.
+
+## Update an existing Change
+
+Stage only the files intended for the next Patch Set, then run `gerrit amend`. The command preserves
+HEAD's Change-Id, refuses unstaged or untracked files, and uploads the amended commit to the same
+Gerrit Change by default. It never stages files automatically.
+
+```bash
+git add src/example.ts
+gerrit amend --dry-run
+gerrit amend
+```
+
+Use `--edit-message` for a manual message-only update or `--no-review` to keep the amendment local.
+For a two-parent merge commit, `gerrit amend --merge-log` regenerates an `Included commits:` body
+from `HEAD^1..HEAD^2`, preserves the existing Change-Id, and uploads the result as a new Patch Set.
+
+## Merge a branch for review
+
+`gerrit merge` refreshes the configured remote by default and always runs
+`git merge --no-ff --no-edit --log`. This keeps branch integration as an explicit merge commit and
+records the incoming commit subjects in its message. Use `--no-fetch` for existing refs or offline
+work, and use `gerrit sync` when the intended operation is fast-forward synchronization.
+
+```bash
+gerrit merge origin/feature/login --dry-run
+gerrit merge origin/feature/login
+gerrit merge feature/login --no-fetch
+```
 
 ## Review options
 
@@ -124,7 +166,9 @@ gerrit review --dry-run
 
 The default synchronization strategy is `ff-only`. Choose `merge` or `rebase` explicitly when local
 and remote history diverge. The CLI never amends commits or creates a synthetic merge to bypass
-Gerrit's `no new changes` response.
+Gerrit's `no new changes` response. Review preflight also stops when HEAD is already known on another
+remote-tracking branch; start again from the target branch and use `gerrit merge` when that branch
+integration itself needs review.
 
 ## Configuration
 
