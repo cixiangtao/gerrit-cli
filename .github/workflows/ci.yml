@@ -69,8 +69,8 @@ jobs:
         run: pnpm verify:package
       - name: Verify the release contract script
         env:
-          GITHUB_REF: refs/heads/main
           GITHUB_REPOSITORY: cixiangtao/gerrit-cli
+          RELEASE_REF: refs/heads/main
         run: |
           export RELEASE_VERSION="$(node --input-type=module --eval 'import manifest from "./package.json" with { type: "json" }; console.log(manifest.version)')"
           node scripts/verify-release.mjs

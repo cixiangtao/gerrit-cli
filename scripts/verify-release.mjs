@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 const releaseVersion = process.env.RELEASE_VERSION;
-const releaseRef = process.env.GITHUB_REF;
+const releaseRef = process.env.RELEASE_REF ?? process.env.GITHUB_REF;
 const repository = process.env.GITHUB_REPOSITORY;
 const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 
