@@ -1,0 +1,69 @@
+{
+  "name": "@anys/gerrit-cli",
+  "version": "0.1.0",
+  "description": "A safe local Git workflow CLI for Gerrit Code Review.",
+  "keywords": [
+    "cli",
+    "code-review",
+    "gerrit",
+    "git",
+    "workflow"
+  ],
+  "homepage": "https://github.com/cixiangtao/gerrit-flow",
+  "bugs": {
+    "url": "https://github.com/cixiangtao/gerrit-flow/issues"
+  },
+  "license": "MIT",
+  "author": "cixiangtao",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cixiangtao/gerrit-flow.git"
+  },
+  "bin": {
+    "gerrit": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "pnpm lint && pnpm type-check && pnpm test",
+    "check:package": "npm pack --dry-run --ignore-scripts --cache .npm-cache",
+    "dev": "tsx src/cli.ts",
+    "format": "oxfmt .",
+    "format:check": "oxfmt . --check",
+    "lint": "oxlint . && pnpm format:check",
+    "lint:fix": "oxlint . --fix && pnpm format",
+    "prepack": "pnpm check && pnpm build",
+    "pretest": "pnpm build",
+    "release:check": "pnpm check && pnpm build && pnpm check:package",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clack/prompts": "0.11.0",
+    "commander": "^13.1.0",
+    "picocolors": "^1.1.1",
+    "string-width": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "oxfmt": "^0.60.0",
+    "oxlint": "^1.75.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "pnpm@10.17.1"
+}
