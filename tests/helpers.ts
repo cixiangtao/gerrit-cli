@@ -8,8 +8,15 @@ const execFileAsync = promisify(execFile);
 const CHANGE_ID = "I0123456789abcdef0123456789abcdef01234567";
 
 export const run = async (command: string, args: string[], cwd: string) => {
+  const environment: NodeJS.ProcessEnv = { ...process.env, NO_COLOR: "1" };
+  delete environment.FORCE_COLOR;
+
   try {
-    const result = await execFileAsync(command, args, { cwd, encoding: "utf8" });
+    const result = await execFileAsync(command, args, {
+      cwd,
+      encoding: "utf8",
+      env: environment,
+    });
     return { exitCode: 0, stdout: result.stdout.trim(), stderr: result.stderr.trim() };
   } catch (error) {
     if (
