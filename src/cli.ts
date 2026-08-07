@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import { Command, Option } from "commander";
 import pc from "picocolors";
 
+import { runAmend, type AmendOptions } from "./commands/amend.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runHook } from "./commands/hook.js";
 import { runMerge, type MergeOptions } from "./commands/merge.js";
@@ -113,6 +114,19 @@ addRepositoryOptions(
   program.command("status").description("Show local repository and Gerrit review readiness"),
 ).action(async (options: SharedRepositoryOptions, command: Command) => {
   await run(command, (global, output) => runStatus(global, output, getOverrides(options)));
+});
+
+addRepositoryOptions(
+  program
+    .command("amend")
+    .description("Amend HEAD and upload a new Patch Set for the same Gerrit Change")
+    .option("--edit-message", "Open the editor to update the commit message", false)
+    .option("--merge-log", "Regenerate a merge commit body from its incoming commits", false)
+    .option("--no-review", "Amend locally without uploading a new Patch Set")
+    .option("--dry-run", "Show the amend and review plan without changing state", false)
+    .option("-y, --yes", "Skip the amend and upload confirmation", false),
+).action(async (options: SharedRepositoryOptions & AmendOptions, command: Command) => {
+  await run(command, (global, output) => runAmend(global, output, getOverrides(options), options));
 });
 
 addRepositoryOptions(

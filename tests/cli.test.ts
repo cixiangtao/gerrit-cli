@@ -19,6 +19,7 @@ describe("CLI", () => {
     expect(result.stdout).toContain("doctor");
     expect(result.stdout).toContain("setup");
     expect(result.stdout).toContain("merge");
+    expect(result.stdout).toContain("amend");
     expect(result.stdout).toContain("review");
   });
 
