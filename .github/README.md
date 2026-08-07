@@ -12,8 +12,8 @@ review pushes.
 
 ## Status
 
-The project is preparing its first public release. Versions below `1.0.0` may refine command and
-JSON contracts. The npm package becomes publicly installable only after the release workflow has
+The project is available as a public npm package. Versions below `1.0.0` may refine command and
+JSON contracts. Each version becomes publicly installable only after the release workflow has
 completed and the registry version has been verified.
 
 ## Why this CLI
