@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { resolve } from "node:path";
+import { readFile } from "node:fs/promises";
 
 import { Command, Option } from "commander";
 import pc from "picocolors";
@@ -17,7 +18,23 @@ import { createOutput } from "./core/output.js";
 import { resolveRootArguments } from "./interactive.js";
 import type { GlobalOptions, SyncStrategy } from "./types.js";
 
-const VERSION = "0.1.0";
+const readPackageVersion = async () => {
+  const manifest: unknown = JSON.parse(
+    await readFile(new URL("../package.json", import.meta.url), "utf8"),
+  );
+  if (
+    typeof manifest !== "object" ||
+    manifest === null ||
+    !("version" in manifest) ||
+    typeof manifest.version !== "string"
+  ) {
+    throw new Error("package.json must contain a string version.");
+  }
+  return manifest.version;
+};
+
+// package.json is the single public version owner for source and packed executions.
+const VERSION = await readPackageVersion();
 const SYNC_STRATEGIES = ["ff-only", "merge", "rebase"] as const;
 const NOTIFY_VALUES = ["NONE", "OWNER", "OWNER_REVIEWERS", "ALL"] as const;
 const helpColors = pc.createColors(pc.isColorSupported);
