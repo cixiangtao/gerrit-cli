@@ -14,7 +14,7 @@ public version manually.
 | Gate           | Required PR checks, release-only file allowlist, `pnpm release:check`, and package consumer checks |
 | Notes          | Release Please-managed `CHANGELOG.md` plus GitHub-generated release notes                          |
 | Git            | Actions creates annotated `v<version>` tags at the accepted release merge                          |
-| Authority      | `.github/workflows/release.yml`; generic pushes can maintain a PR but cannot publish               |
+| Authority      | `.github/workflows/release.yml`; generic pushes cannot publish, and recovery re-proves the same PR |
 | Delivery       | Public npm package and GitHub Release                                                              |
 | Credentials    | GitHub App for release PRs; npm trusted publishing with GitHub Actions OIDC                        |
 | Prereleases    | Not supported by the current workflow                                                              |
@@ -38,7 +38,9 @@ public version manually.
 
 Do not bump versions, create tags, dispatch a parallel publisher, or publish from a workstation.
 Configuration, implementation, documentation, and dependency changes belong in ordinary PRs, not
-the automated release PR.
+the automated release PR. The Release workflow's manual input is only a recovery entry point for the
+exact merge SHA of an already merged automated release PR on `main`; it runs the same admission gate
+and Actions-owned publisher rather than creating a second publication path.
 
 ## Automation and recovery
 
@@ -52,8 +54,10 @@ The npm trusted publisher remains scoped to package `@anys/gerrit-cli`, reposito
 The repository must not define an `NPM_TOKEN` secret.
 
 If publication partially fails, inspect the merged release PR, workflow jobs, tag target, GitHub
-Release, npm version, `latest`, integrity, and provenance before rerunning the same workflow. Never
-reuse, delete, overwrite, or republish an existing version as recovery.
+Release, npm version, `latest`, integrity, and provenance first. After fixing the workflow through an
+ordinary PR, dispatch **Release** from `main` with the exact merge SHA of the same automated release
+PR. The gate rejects other commits, non-`main` refs, non-release diffs, and version inconsistencies.
+Never reuse, delete, overwrite, or republish an existing version as recovery.
 
 ## 简体中文
 
@@ -69,5 +73,7 @@ PR。本地命令不发布 npm、不创建发布 Tag，也不手动修改公开�
 5. 最后独立核对 Tag 指向、GitHub Release、npm 版本与 `latest`、provenance、公开包完整性和全新
    `npx` 调用。
 
-不要在本地改版本、打发布 Tag、上传 npm，也不要保留可绕过发布 PR 的手动工作流入口。失败重试前
-必须先核对 PR、工作流、Tag、GitHub Release 和 npm 的实际状态。
+不要在本地改版本、打发布 Tag、上传 npm，也不要保留可绕过发布 PR 的手动工作流入口。`Release`
+的手动输入仅用于恢复已经合并的自动发布 PR：必须从 `main` 提供该 PR 的准确合并 SHA，并重新执行
+同一套身份、文件和版本校验。失败重试前必须先核对 PR、工作流、Tag、GitHub Release 和 npm 的
+实际状态。
