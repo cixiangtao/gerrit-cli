@@ -4,6 +4,7 @@ const INTERACTIVE_COMMANDS = [
   "status",
   "doctor",
   "review",
+  "amend",
   "merge",
   "sync",
   "setup",
@@ -28,6 +29,11 @@ export const COMMAND_MENU_OPTIONS = [
     value: "review",
     label: "review",
     hint: "Preflight, synchronize, and push commits · confirms before push",
+  },
+  {
+    value: "amend",
+    label: "amend",
+    hint: "Update HEAD and upload a new Patch Set for the same Change",
   },
   {
     value: "merge",

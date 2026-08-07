@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import { Command, Option } from "commander";
 import pc from "picocolors";
 
+import { runAmend, type AmendOptions } from "./commands/amend.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runHook } from "./commands/hook.js";
 import { runMerge, type MergeOptions } from "./commands/merge.js";
@@ -17,7 +18,7 @@ import { runSync } from "./commands/sync.js";
 import { CliError, toCliError } from "./core/errors.js";
 import { createOutput } from "./core/output.js";
 import { resolveRootArguments } from "./interactive.js";
-import type { GlobalOptions, MergeStrategy, SyncStrategy } from "./types.js";
+import type { GlobalOptions, SyncStrategy } from "./types.js";
 
 const readPackageVersion = async () => {
   const manifest: unknown = JSON.parse(
@@ -37,7 +38,6 @@ const readPackageVersion = async () => {
 // package.json is the single public version owner for source and packed executions.
 const VERSION = await readPackageVersion();
 const SYNC_STRATEGIES = ["ff-only", "merge", "rebase"] as const;
-const MERGE_STRATEGIES = ["ff-only", "ff", "no-ff"] as const;
 const NOTIFY_VALUES = ["NONE", "OWNER", "OWNER_REVIEWERS", "ALL"] as const;
 const helpColors = pc.createColors(pc.isColorSupported);
 
@@ -117,6 +117,19 @@ addRepositoryOptions(
 
 addRepositoryOptions(
   program
+    .command("amend")
+    .description("Amend HEAD and upload a new Patch Set for the same Gerrit Change")
+    .option("--edit-message", "Open the editor to update the commit message", false)
+    .option("--merge-log", "Regenerate a merge commit body from its incoming commits", false)
+    .option("--no-review", "Amend locally without uploading a new Patch Set")
+    .option("--dry-run", "Show the amend and review plan without changing state", false)
+    .option("-y, --yes", "Skip the amend and upload confirmation", false),
+).action(async (options: SharedRepositoryOptions & AmendOptions, command: Command) => {
+  await run(command, (global, output) => runAmend(global, output, getOverrides(options), options));
+});
+
+addRepositoryOptions(
+  program
     .command("setup")
     .description("Install and verify the official Gerrit Change-Id hook")
     .option("--dry-run", "Show hook changes without downloading or writing", false)
@@ -134,15 +147,10 @@ addRepositoryOptions(
 
 program
   .command("merge")
-  .description("Merge a local or remote branch into the current branch")
+  .description("Create an explicit merge commit from a local or remote branch")
   .argument("[source]", "Local or remote branch to merge")
   .option("--remote <name>", "Git remote to refresh before selecting a branch")
-  .addOption(
-    new Option("--strategy <strategy>", "Merge strategy")
-      .choices(MERGE_STRATEGIES)
-      .default("ff-only"),
-  )
-  .option("--fetch", "Refresh the selected remote before planning the merge", false)
+  .option("--no-fetch", "Use existing refs without refreshing the selected remote")
   .option("--continue", "Continue an in-progress merge after resolving conflicts", false)
   .option("--abort", "Abort an in-progress merge and restore the pre-merge state", false)
   .option("--dry-run", "Show the merge plan without fetching or changing history", false)
@@ -150,7 +158,7 @@ program
   .action(
     async (
       source: string | undefined,
-      options: MergeOptions & { remote?: string; strategy: MergeStrategy },
+      options: MergeOptions & { remote?: string },
       command: Command,
     ) => {
       await run(command, (global, output) =>

@@ -1,5 +1,4 @@
 export type SyncStrategy = "ff-only" | "merge" | "rebase";
-export type MergeStrategy = "ff-only" | "ff" | "no-ff";
 
 export interface GerritCliConfig {
   /** Git remote used to fetch and push changes. */

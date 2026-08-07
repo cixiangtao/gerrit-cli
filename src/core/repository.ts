@@ -180,6 +180,20 @@ export const getOutgoingCommits = async (root: string, base: string) => {
     });
 };
 
+/** Lists remote-tracking branches that already contain a commit. */
+export const getRemoteBranchesContainingCommit = async (
+  root: string,
+  remote: string,
+  commit: string,
+) => {
+  const result = await runGit(
+    ["for-each-ref", `--contains=${commit}`, "--format=%(refname:short)", `refs/remotes/${remote}`],
+    { cwd: root },
+  );
+
+  return result.stdout.split("\n").filter((branch) => branch && branch !== `${remote}/HEAD`);
+};
+
 /** Reads the Change-Id trailer from HEAD when present. */
 export const getHeadChangeId = async (root: string) => {
   const result = await runGit(["log", "-1", "--format=%B"], { cwd: root });

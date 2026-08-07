@@ -1,4 +1,4 @@
-import { cancel, isCancel, select, type Option } from "@clack/prompts";
+import { cancel, isCancel, select } from "@clack/prompts";
 
 import { CliError } from "../core/errors.js";
 import { runGit } from "../core/git.js";
@@ -10,11 +10,10 @@ import {
   getWorkingTreeStatus,
   type RepositoryOverrides,
 } from "../core/repository.js";
-import type { GlobalOptions, MergeStrategy } from "../types.js";
+import type { GlobalOptions } from "../types.js";
 import { confirmWrite, resolveRuntime } from "./shared.js";
 
 export interface MergeOptions {
-  strategy: MergeStrategy;
   fetch: boolean;
   continue: boolean;
   abort: boolean;
@@ -35,24 +34,6 @@ interface MergeComparison {
   targetCommits: number;
   relationship: "up-to-date" | "fast-forward" | "diverged";
 }
-
-const STRATEGY_OPTIONS = [
-  {
-    value: "ff-only",
-    label: "Fast-forward only",
-    hint: "Stop if both branches contain unique commits",
-  },
-  {
-    value: "ff",
-    label: "Fast-forward when possible",
-    hint: "Create a merge commit only when the branches diverged",
-  },
-  {
-    value: "no-ff",
-    label: "Always create a merge commit",
-    hint: "Preserve the source branch as an explicit merge boundary",
-  },
-] satisfies Option<MergeStrategy>[];
 
 const assertInteractive = (global: GlobalOptions) => {
   if (global.json || !process.stdin.isTTY || !process.stdout.isTTY) {
@@ -105,26 +86,6 @@ export const listMergeCandidates = async (root: string, currentBranch: string) =
     .filter((candidate): candidate is MergeCandidate => candidate !== undefined);
 };
 
-const promptFetch = async (remote: string) =>
-  unwrapPrompt(
-    await select<boolean>({
-      message: `Refresh ${remote} before choosing a branch?`,
-      options: [
-        {
-          value: true,
-          label: "Fetch latest branches",
-          hint: "Updates remote-tracking refs before the preview",
-        },
-        {
-          value: false,
-          label: "Use existing refs",
-          hint: "Keeps the branch picker fully local",
-        },
-      ],
-      initialValue: true,
-    }),
-  );
-
 const promptSource = async (candidates: readonly MergeCandidate[]) => {
   if (candidates.length === 0) {
     throw new CliError("NO_MERGE_CANDIDATES", "No source branches are available to merge.", {
@@ -143,15 +104,6 @@ const promptSource = async (candidates: readonly MergeCandidate[]) => {
     }),
   );
 };
-
-const promptStrategy = async () =>
-  unwrapPrompt(
-    await select<MergeStrategy>({
-      message: "Select a merge strategy",
-      options: STRATEGY_OPTIONS,
-      initialValue: "ff-only",
-    }),
-  );
 
 const promptRecoveryAction = async () =>
   unwrapPrompt(
@@ -217,11 +169,7 @@ const listIncomingCommits = async (root: string, source: string) => {
     });
 };
 
-const mergeArgs = (source: string, strategy: MergeStrategy) => {
-  if (strategy === "ff-only") return ["merge", "--ff-only", source];
-  if (strategy === "no-ff") return ["merge", "--no-ff", "--no-edit", source];
-  return ["merge", "--ff", "--no-edit", source];
-};
+const mergeArgs = (source: string) => ["merge", "--no-ff", "--no-edit", "--log", source];
 
 const showMergePlan = (
   output: Output,
@@ -229,7 +177,7 @@ const showMergePlan = (
     dryRun: boolean;
     target: string;
     source: string;
-    strategy: MergeStrategy;
+    strategy: "no-ff";
     comparison: MergeComparison;
     commands: string[];
     commits: Array<{ oid: string; subject: string }>;
@@ -239,7 +187,7 @@ const showMergePlan = (
   output.note(
     data.dryRun
       ? "No fetch or history update will be performed (--dry-run)."
-      : "Review the selected branches and strategy before continuing.",
+      : "Review the selected branches before continuing.",
     data.dryRun ? "warning" : "muted",
   );
   output.blank();
@@ -340,44 +288,28 @@ export const runMerge = async (
   }
 
   await assertRepositoryReady(repository.root);
-  let shouldFetch = options.fetch;
+  const shouldFetch = options.fetch;
   let selectedSource = source;
-  let strategy = options.strategy;
 
-  if (!selectedSource) {
-    assertInteractive(global);
-    shouldFetch = await promptFetch(repository.remote);
-    if (shouldFetch && !options.dryRun) {
-      await runGit(["fetch", "--prune", repository.remote], {
-        cwd: repository.root,
-        stdin: "inherit",
-      });
-    }
-    selectedSource = await promptSource(
-      await listMergeCandidates(repository.root, repository.branch),
-    );
-    strategy = await promptStrategy();
-  } else if (shouldFetch && !options.dryRun) {
+  if (shouldFetch && !options.dryRun) {
     await runGit(["fetch", "--prune", repository.remote], {
       cwd: repository.root,
       stdin: "inherit",
     });
   }
 
-  const sourceOid = await validateSource(repository.root, selectedSource);
-  const comparison = await compareMerge(repository.root, sourceOid);
-  if (strategy === "ff-only" && comparison.relationship === "diverged") {
-    throw new CliError("NON_FAST_FORWARD_MERGE", "The selected branches have diverged.", {
-      hints: [
-        "Choose --strategy ff to allow a merge commit when needed.",
-        "Choose --strategy no-ff to always create a merge commit.",
-        "No history was changed.",
-      ],
-    });
+  if (!selectedSource) {
+    assertInteractive(global);
+    selectedSource = await promptSource(
+      await listMergeCandidates(repository.root, repository.branch),
+    );
   }
 
+  const sourceOid = await validateSource(repository.root, selectedSource);
+  const comparison = await compareMerge(repository.root, sourceOid);
+
   const fetchArgs = ["fetch", "--prune", repository.remote];
-  const actualMergeArgs = mergeArgs(selectedSource, strategy);
+  const actualMergeArgs = mergeArgs(selectedSource);
   const commands = [
     ...(shouldFetch ? [formatCommand("git", fetchArgs)] : []),
     formatCommand("git", actualMergeArgs),
@@ -388,7 +320,7 @@ export const runMerge = async (
     target: repository.branch,
     source: selectedSource,
     sourceOid,
-    strategy,
+    strategy: "no-ff" as const,
     fetched: shouldFetch && !options.dryRun,
     comparison,
     commits: await listIncomingCommits(repository.root, sourceOid),

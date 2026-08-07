@@ -8,6 +8,7 @@ import {
   assertRepositoryReady,
   getHeadChangeId,
   getOutgoingCommits,
+  getRemoteBranchesContainingCommit,
   type RepositoryOverrides,
 } from "../core/repository.js";
 import { deriveWebUrl } from "../core/remote.js";
@@ -120,6 +121,22 @@ export const runReview = async (
         "Do not create or amend commits solely to bypass this check.",
       ],
     });
+  }
+  const publishedBranches = (
+    await getRemoteBranchesContainingCommit(repository.root, repository.remote, "HEAD")
+  ).filter((branch) => branch !== `${repository.remote}/${repository.targetBranch}`);
+  if (publishedBranches.length > 0) {
+    throw new CliError(
+      "NO_NEW_CHANGES",
+      "HEAD is already published on another remote branch, so Gerrit cannot create a new change.",
+      {
+        hints: [
+          `Known remote branch${publishedBranches.length === 1 ? "" : "es"}: ${publishedBranches.join(", ")}`,
+          "A fast-forward merge reuses the published commits without creating a reviewable merge commit.",
+          "If the branch integration needs review, start again from the target branch and run gerrit merge.",
+        ],
+      },
+    );
   }
   const missingChangeIds = commits.filter((commit) => !commit.changeId);
   if (missingChangeIds.length > 0) {
