@@ -29,11 +29,14 @@ The CLI requires Node.js 22.14 or newer.
 gerrit --json doctor --offline
 gerrit setup --dry-run
 gerrit status
+gerrit merge feature/login --dry-run
 gerrit review alice,bob --dry-run
 ```
 
 The CLI defaults to previews, explicit synchronization strategies, and interactive confirmation
-before a live review push. Use explicit commands and `--json` in automation.
+before a live merge or review push. Run `gerrit merge` in a terminal to choose the source branch,
+refresh behavior, and merge strategy from visual menus. Use explicit commands and `--json` in
+automation.
 
 ## License
 

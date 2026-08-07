@@ -4,6 +4,7 @@ const INTERACTIVE_COMMANDS = [
   "status",
   "doctor",
   "review",
+  "merge",
   "sync",
   "setup",
   "open",
@@ -27,6 +28,11 @@ export const COMMAND_MENU_OPTIONS = [
     value: "review",
     label: "review",
     hint: "Preflight, synchronize, and push commits · confirms before push",
+  },
+  {
+    value: "merge",
+    label: "merge",
+    hint: "Merge a selected branch · previews and confirms before changing history",
   },
   {
     value: "sync",
