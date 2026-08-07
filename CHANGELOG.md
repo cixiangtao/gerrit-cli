@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/cixiangtao/gerrit-cli/compare/v0.3.1...v1.0.0) (2026-08-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** remove merge strategy selection and replace --fetch with --no-fetch.
+
+### Features
+
+* **cli:** add reviewable amend and merge workflows ([217ba01](https://github.com/cixiangtao/gerrit-cli/commit/217ba01f459f295ea32cd149959baf9dde195e88))
+
 ## [0.3.1](https://github.com/cixiangtao/gerrit-cli/compare/v0.3.0...v0.3.1) (2026-08-07)
 
 
