@@ -2,11 +2,11 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import type { EffectiveConfig, GerritFlowConfig, SyncStrategy } from "../types.js";
+import type { EffectiveConfig, GerritCliConfig, SyncStrategy } from "../types.js";
 import { CliError } from "./errors.js";
 
-const CONFIG_FILE_NAME = ".gerrit-flow.json";
-const GLOBAL_CONFIG_PATH = join(homedir(), ".config", "gerrit-flow", "config.json");
+const CONFIG_FILE_NAME = ".gerrit-cli.json";
+const GLOBAL_CONFIG_PATH = join(homedir(), ".config", "gerrit-cli", "config.json");
 const SYNC_STRATEGIES = new Set<SyncStrategy>(["ff-only", "merge", "rebase"]);
 
 const readConfigFile = async (path: string) => {
@@ -15,7 +15,7 @@ const readConfigFile = async (path: string) => {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       throw new Error("The root value must be an object.");
     }
-    return value as GerritFlowConfig;
+    return value as GerritCliConfig;
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
       return undefined;
@@ -27,7 +27,7 @@ const readConfigFile = async (path: string) => {
   }
 };
 
-const validateConfig = (config: GerritFlowConfig, path: string) => {
+const validateConfig = (config: GerritCliConfig, path: string) => {
   for (const key of ["remote", "targetBranch", "webUrl"] as const) {
     if (config[key] !== undefined && typeof config[key] !== "string") {
       throw new CliError("INVALID_CONFIG", `Invalid ${key} in ${path}.`, {

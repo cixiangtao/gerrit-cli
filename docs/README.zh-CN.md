@@ -126,8 +126,8 @@ gerrit review --dry-run
 配置优先级如下：
 
 1. 命令参数。
-2. 仓库 `.gerrit-flow.json`。
-3. 用户 `~/.config/gerrit-flow/config.json`。
+2. 仓库 `.gerrit-cli.json`。
+3. 用户 `~/.config/gerrit-cli/config.json`。
 4. Git 分支跟踪信息和安全默认值。
 
 ```json

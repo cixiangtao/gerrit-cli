@@ -13,6 +13,27 @@ import {
 import { addReviewCommit, createRepository, git } from "./helpers.js";
 
 describe("repository inspection", () => {
+  it("loads repository configuration from .gerrit-cli.json", async () => {
+    const root = await createRepository();
+    await writeFile(
+      join(root, ".gerrit-cli.json"),
+      `${JSON.stringify({ targetBranch: "develop", syncStrategy: "rebase" }, null, 2)}\n`,
+    );
+
+    await expect(loadConfig(root)).resolves.toMatchObject({
+      targetBranch: "develop",
+      syncStrategy: "rebase",
+      sources: [join(root, ".gerrit-cli.json")],
+    });
+  });
+
+  it("does not load the former .gerrit-flow.json filename", async () => {
+    const root = await createRepository();
+    await writeFile(join(root, ".gerrit-flow.json"), "not valid JSON\n");
+
+    await expect(loadConfig(root)).resolves.toMatchObject({ syncStrategy: "ff-only" });
+  });
+
   it("resolves tracking metadata and outgoing Change-Ids", async () => {
     const root = await createRepository();
     await addReviewCommit(root);

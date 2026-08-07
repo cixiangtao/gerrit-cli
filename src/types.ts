@@ -1,6 +1,6 @@
 export type SyncStrategy = "ff-only" | "merge" | "rebase";
 
-export interface GerritFlowConfig {
+export interface GerritCliConfig {
   /** Git remote used to fetch and push changes. */
   remote?: string;
   /** Gerrit target branch. Defaults to the current branch's upstream branch. */

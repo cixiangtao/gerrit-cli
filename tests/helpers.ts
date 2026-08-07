@@ -43,7 +43,7 @@ export const git = async (cwd: string, ...args: string[]) => {
 };
 
 export const createRepository = async () => {
-  const root = await mkdtemp(join(tmpdir(), "gerrit-flow-test-"));
+  const root = await mkdtemp(join(tmpdir(), "gerrit-cli-test-"));
   await git(root, "init", "-b", "main");
   await git(root, "config", "user.name", "Test User");
   await git(root, "config", "user.email", "test@example.com");
@@ -68,7 +68,7 @@ export const addReviewCommit = async (root: string) => {
 };
 
 export const createSynchronizableRepository = async () => {
-  const base = await mkdtemp(join(tmpdir(), "gerrit-flow-sync-"));
+  const base = await mkdtemp(join(tmpdir(), "gerrit-cli-sync-"));
   const remote = join(base, "remote.git");
   const seed = join(base, "seed");
   const local = join(base, "local");

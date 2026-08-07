@@ -82,7 +82,7 @@ export const resolveRepositoryContext = async (
   });
   if (remoteResult.exitCode !== 0 || !remoteResult.stdout) {
     throw new CliError("REMOTE_NOT_FOUND", `Git remote ${remote} was not found.`, {
-      hints: ["Configure a remote, add it to .gerrit-flow.json, or pass --remote <name>."],
+      hints: ["Configure a remote, add it to .gerrit-cli.json, or pass --remote <name>."],
     });
   }
   const branchCheck = await runGit(["check-ref-format", "--branch", targetBranch], {

@@ -122,7 +122,7 @@ export const installHook = async (
   }
 
   if (wouldDownload) {
-    const temporaryDirectory = await mkdtemp(join(tmpdir(), "gerrit-flow-hook-"));
+    const temporaryDirectory = await mkdtemp(join(tmpdir(), "gerrit-cli-hook-"));
     const temporaryHook = join(temporaryDirectory, "commit-msg");
     try {
       const result = await runCommand(

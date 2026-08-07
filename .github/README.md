@@ -131,8 +131,8 @@ Gerrit's `no new changes` response.
 Configuration precedence is:
 
 1. Command flags.
-2. Repository `.gerrit-flow.json`.
-3. User `~/.config/gerrit-flow/config.json`.
+2. Repository `.gerrit-cli.json`.
+3. User `~/.config/gerrit-cli/config.json`.
 4. Git branch tracking metadata and safe defaults.
 
 ```json

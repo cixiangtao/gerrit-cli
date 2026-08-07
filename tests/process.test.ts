@@ -8,7 +8,7 @@ import { runCommand } from "../src/core/process.js";
 
 describe("process runner", () => {
   it("passes repository-controlled text as an argument instead of shell code", async () => {
-    const cwd = await mkdtemp(join(tmpdir(), "gerrit-flow-process-"));
+    const cwd = await mkdtemp(join(tmpdir(), "gerrit-cli-process-"));
     const marker = join(cwd, "injected");
     const dangerous = `branch;touch ${marker}`;
     const result = await runCommand(
