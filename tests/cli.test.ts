@@ -18,6 +18,7 @@ describe("CLI", () => {
     expect(result.stdout).toContain("Usage: gerrit");
     expect(result.stdout).toContain("doctor");
     expect(result.stdout).toContain("setup");
+    expect(result.stdout).toContain("merge");
     expect(result.stdout).toContain("review");
   });
 

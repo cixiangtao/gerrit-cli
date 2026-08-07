@@ -61,6 +61,7 @@ describe("interactive root command", () => {
       "status",
       "doctor",
       "review",
+      "merge",
       "sync",
       "setup",
       "open",

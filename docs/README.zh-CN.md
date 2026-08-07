@@ -88,6 +88,10 @@ gerrit setup
 # 检查本地送审状态。
 gerrit status
 
+# 通过菜单选择分支和策略，或显式预览一次合并。
+gerrit merge
+gerrit merge feature/login --strategy no-ff --dry-run
+
 # 先预览，再送审。
 gerrit review zhangsan,lisi --dry-run
 gerrit review zhangsan,lisi
@@ -100,12 +104,36 @@ gerrit review zhangsan,lisi
 | `doctor [--offline]`             | 检查 Git、仓库、hook、remote 和 SSH 就绪状态         | 否               |
 | `status`                         | 显示分支、上游、ahead/behind、待送审提交和 hook 状态 | 否               |
 | `setup [--dry-run]`              | 下载并组合 Gerrit 官方 `commit-msg` hook             | 是               |
+| `merge [source] [--dry-run]`     | 选择来源分支和策略，合并到当前分支                   | 是               |
 | `sync [--dry-run]`               | 拉取并按显式策略同步目标分支                         | 是               |
 | `review [reviewers] [--dry-run]` | 预检、按需同步并推送到 `refs/for/*`                  | 是               |
 | `open [--print]`                 | 打开 HEAD 的 Change-Id 对应的 Gerrit 变更            | 打开浏览器       |
 | `hook run <file>`                | 与 Husky 等其他 hook 管理器组合                      | 更新提交信息文件 |
 
 使用 `gerrit <command> --help` 查看完整选项。
+
+## 合并分支
+
+在交互式终端中直接运行 `gerrit merge`，CLI 会依次询问是否刷新远端、选择来源分支、选择合并策略，
+随后展示目标分支、来源分支、双方独有提交、待合入提交和实际 Git 命令。真正修改历史前还会再次确认。
+
+```bash
+# 只预览，不 fetch、不修改历史。
+gerrit merge feature/login --strategy no-ff --dry-run
+
+# 刷新 origin 后，允许在必要时创建合并提交。
+gerrit merge origin/feature/login --fetch --strategy ff
+
+# 始终保留一个明确的合并提交。
+gerrit merge feature/login --strategy no-ff
+
+# 冲突解决并暂存后继续，或放弃本次合并。
+gerrit merge --continue
+gerrit merge --abort
+```
+
+策略默认是 `ff-only`，分支已经分叉时会停止且不改历史。`ff` 会尽量快进，仅在必要时创建合并
+提交；`no-ff` 始终创建合并提交。非交互环境必须明确给出来源分支，并使用 `--yes` 跳过最终确认。
 
 ## 送审选项
 
