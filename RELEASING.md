@@ -5,19 +5,19 @@ prepare a version change; they do not publish a package or create a release tag.
 
 ## Release contract
 
-| Concern        | Decision                                                                                            |
-| -------------- | --------------------------------------------------------------------------------------------------- |
-| Version owner  | Root `package.json`; the CLI reads it at runtime                                                    |
-| Version policy | Semantic Versioning; versions below `1.0.0` may change public contracts                             |
-| Release source | Current protected `main` commit                                                                     |
-| Gate           | Required pull request checks plus a clean `pnpm release:check` in the release workflow              |
-| Notes          | GitHub-generated release notes                                                                      |
-| Git            | Actions creates annotated `v<version>` tags                                                         |
-| Authority      | Manual dispatch of `.github/workflows/release.yml` from `main`                                      |
-| Delivery       | Public npm package and GitHub Release                                                               |
-| Credentials    | npm trusted publishing with OIDC; a one-time repository secret may bootstrap the first package only |
-| Prereleases    | Not supported by the current workflow                                                               |
-| Recovery       | Reruns accept only an existing tag at the same commit and an npm artifact with matching integrity   |
+| Concern        | Decision                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------- |
+| Version owner  | Root `package.json`; the CLI reads it at runtime                                                  |
+| Version policy | Semantic Versioning; versions below `1.0.0` may change public contracts                           |
+| Release source | Current protected `main` commit                                                                   |
+| Gate           | Required pull request checks plus a clean `pnpm release:check` in the release workflow            |
+| Notes          | GitHub-generated release notes                                                                    |
+| Git            | Actions creates annotated `v<version>` tags                                                       |
+| Authority      | Manual dispatch of `.github/workflows/release.yml` from `main`                                    |
+| Delivery       | Public npm package and GitHub Release                                                             |
+| Credentials    | npm trusted publishing with GitHub Actions OIDC only                                              |
+| Prereleases    | Not supported by the current workflow                                                             |
+| Recovery       | Reruns accept only an existing tag at the same commit and an npm artifact with matching integrity |
 
 ## Prepare a release
 
@@ -46,11 +46,9 @@ Before the first release, the repository owner must:
   `cixiangtao/gerrit-cli`, workflow `release.yml`, and environment `npm`;
 - create and, if desired, protect the GitHub `npm` environment.
 
-Because npm exposes trusted-publisher settings only after a package exists, the first version may
-use a temporary granular npm token stored as the repository secret `NPM_TOKEN`. The release still
-runs exclusively in Actions. Immediately after the first version is public, configure the trusted
-publisher, delete `NPM_TOKEN`, require 2FA while disallowing tokens in npm package settings, and
-verify the next publish path uses OIDC. No later release may depend on the bootstrap token.
+The initial package bootstrap is complete. The repository must not define an `NPM_TOKEN` secret;
+all future npm publications authenticate through the configured OIDC trusted publisher. npm package
+settings require 2FA and disallow bypass-2FA tokens.
 
 After the first successful release, evaluate a `v*` tag ruleset that permits the release workflow
 to create immutable tags while preventing manual deletion or retargeting. Do not rely on that rule
@@ -76,6 +74,5 @@ npm，也不创建发布 tag。
 environment=`npm` 的 npm trusted publisher。首次发布成功后，可以再评估只允许发布工作流创建、且禁止
 手动删除或改指向的 `v*` tag ruleset；远程行为验证前不要依赖该规则。
 
-npm 只有在包存在后才提供 trusted publisher 设置，因此首个版本可以临时使用 GitHub 仓库 secret
-`NPM_TOKEN`，但发布仍必须由 Actions 执行。首版公开后应立即配置 OIDC、删除该 secret，并在 npm
-包设置中要求 2FA 且禁止 Token；后续版本不得依赖首发 Token。
+首版引导已经完成。仓库不得再配置 `NPM_TOKEN` secret；后续 npm 发布必须使用已配置的 OIDC trusted
+publisher。npm 包设置已要求 2FA 并禁止 bypass-2FA Token。

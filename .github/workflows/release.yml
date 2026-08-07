@@ -71,10 +71,6 @@ jobs:
             git push origin "refs/tags/${release_tag}"
           fi
       - name: Publish or verify the npm package
-        env:
-          # NPM_TOKEN is a one-time bootstrap fallback for the first package version. Delete the
-          # repository secret after configuring npm trusted publishing; OIDC is attempted first.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
           package_name="$(node --input-type=module --eval 'import manifest from "./package.json" with { type: "json" }; console.log(manifest.name)')"
