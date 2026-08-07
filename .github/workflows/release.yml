@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Exact merge commit of an automated release PR on main
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -16,10 +22,12 @@ concurrency:
 jobs:
   gate:
     name: Verify merged release PR
+    if: github.repository == 'cixiangtao/gerrit-cli' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
       release: ${{ steps.release.outputs.release }}
+      release_sha: ${{ steps.release.outputs.release_sha }}
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
     steps:
@@ -27,14 +35,24 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          ref: ${{ inputs.release_sha || github.sha }}
       - name: Verify release admission
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_SHA: ${{ inputs.release_sha || github.sha }}
         shell: bash
         run: |
           echo "release=false" >> "$GITHUB_OUTPUT"
+          if [[ ! "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Release SHA must be a full lowercase commit SHA: ${RELEASE_SHA}" >&2
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$RELEASE_SHA" origin/main; then
+            echo "Release SHA is not an ancestor of origin/main: ${RELEASE_SHA}" >&2
+            exit 1
+          fi
           pull_requests="$(gh api -H "Accept: application/vnd.github+json" \
             "repos/${GITHUB_REPOSITORY}/commits/${RELEASE_SHA}/pulls")"
           release_pr="$(jq -c '
@@ -102,6 +120,7 @@ jobs:
           fi
 
           echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "release_sha=${RELEASE_SHA}" >> "$GITHUB_OUTPUT"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
@@ -114,6 +133,8 @@ jobs:
     steps:
       - name: Check out the release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.gate.outputs.release_sha }}
       - name: Set up pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
@@ -157,6 +178,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          ref: ${{ needs.gate.outputs.release_sha }}
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -172,15 +194,16 @@ jobs:
           path: artifacts
       - name: Create or verify the release tag
         env:
+          RELEASE_SHA: ${{ needs.gate.outputs.release_sha }}
           TAG: ${{ needs.gate.outputs.tag }}
         run: |
           git fetch --force --tags origin
           if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
-            test "$(git rev-list -n 1 "$TAG")" = "$GITHUB_SHA"
+            test "$(git rev-list -n 1 "$TAG")" = "$RELEASE_SHA"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag --annotate "$TAG" --message "$TAG" "$GITHUB_SHA"
+            git tag --annotate "$TAG" --message "$TAG" "$RELEASE_SHA"
             git push origin "refs/tags/${TAG}"
           fi
       - name: Publish or verify the npm package
@@ -193,7 +216,7 @@ jobs:
             echo "Expected one release archive, found ${archive_count}." >&2
             exit 1
           fi
-          archive="$(find artifacts -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          archive="$(find "$PWD/artifacts" -maxdepth 1 -type f -name '*.tgz' -print -quit)"
           local_integrity="$(node --input-type=module --eval \
             'import { createHash } from "node:crypto"; import { readFileSync } from "node:fs"; const value = createHash("sha512").update(readFileSync(process.argv[1])).digest("base64"); console.log(`sha512-${value}`)' \
             "$archive")"
