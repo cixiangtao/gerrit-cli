@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/cixiangtao/gerrit-cli/compare/v0.3.0...v0.3.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* **release:** 🐛 include hidden package artifacts ([cb3f54b](https://github.com/cixiangtao/gerrit-cli/commit/cb3f54bcc351af18d788c06816a9f6e9fcc87399))
+
 ## [0.3.0](https://github.com/cixiangtao/gerrit-cli/compare/v0.2.0...v0.3.0) (2026-08-07)
 
 
