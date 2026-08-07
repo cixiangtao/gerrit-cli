@@ -1,0 +1,31 @@
+name: Feature request / 功能建议
+description: Propose a focused workflow improvement / 提议聚焦的工作流改进
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / 问题
+      description: Describe the Gerrit workflow problem without prescribing an implementation. / 先描述 Gerrit 工作流问题，不要只给实现方案。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed outcome / 期望结果
+      description: Explain the user-visible behavior and safety boundary. / 说明用户可见行为和安全边界。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives / 替代方案
+      description: Include native Git or Gerrit commands already considered. / 请说明已经考虑过的原生 Git 或 Gerrit 命令。
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Contract impact / 契约影响
+      options:
+        - label: This may change Git history, hooks, remotes, review pushes, or the JSON contract. / 这可能影响 Git 历史、hook、remote、送审或 JSON 契约。

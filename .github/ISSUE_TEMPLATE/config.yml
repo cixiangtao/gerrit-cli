@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Support boundaries / 支持边界
+    url: https://github.com/cixiangtao/gerrit-flow/blob/main/SUPPORT.md
+    about: Check which questions belong to this project. / 查看本项目的支持范围。
+  - name: Private security report / 私密安全报告
+    url: https://github.com/cixiangtao/gerrit-flow/security/advisories/new
+    about: Never disclose vulnerabilities in public issues. / 不要在公开 Issue 中披露漏洞。

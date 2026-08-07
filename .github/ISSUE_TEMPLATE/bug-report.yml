@@ -1,0 +1,54 @@
+name: Bug report / Bug 报告
+description: Report a reproducible CLI defect / 提交可复现的 CLI 缺陷
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues first. Never include credentials, private repository data, or vulnerability details.
+        请先搜索已有 Issue，不要提交凭据、私有仓库数据或漏洞细节。
+  - type: input
+    id: version
+    attributes:
+      label: CLI version / CLI 版本
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment / 环境
+      description: Node.js version, operating system, Git version, and shell. / Node.js、操作系统、Git 与 shell 版本。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction / 最小复现
+      description: Use a disposable repository and sanitize all output. / 请使用临时仓库并对输出脱敏。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior / 预期行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior / 实际行为
+      description: Include sanitized stdout, stderr, and exit code when relevant. / 必要时提供脱敏后的 stdout、stderr 和退出码。
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks / 安全确认
+      options:
+        - label: I removed credentials, private URLs, repository names, usernames, emails, and commit contents. / 我已删除凭据、私有 URL、仓库名、用户名、邮箱和提交内容。
+          required: true
+        - label: This is not a security vulnerability. / 这不是安全漏洞。
+          required: true
