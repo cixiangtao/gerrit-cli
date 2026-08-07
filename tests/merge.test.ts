@@ -5,7 +5,13 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { listMergeCandidates } from "../src/commands/merge.js";
-import { addLocalCommit, createRepository, git, run } from "./helpers.js";
+import {
+  addLocalCommit,
+  createRepository,
+  createSynchronizableRepository,
+  git,
+  run,
+} from "./helpers.js";
 
 const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const cliPath = join(projectRoot, "dist", "cli.js");
@@ -41,7 +47,7 @@ describe("merge command", () => {
     const before = await git(root, "rev-parse", "HEAD");
     const result = await run(
       process.execPath,
-      [cliPath, "--json", "-C", root, "merge", "feature/login", "--strategy", "no-ff", "--dry-run"],
+      [cliPath, "--json", "-C", root, "merge", "feature/login", "--dry-run"],
       projectRoot,
     );
 
@@ -65,7 +71,7 @@ describe("merge command", () => {
     const root = await createDivergedBranches();
     const result = await run(
       process.execPath,
-      [cliPath, "-C", root, "merge", "feature/login", "--strategy", "no-ff", "--dry-run"],
+      [cliPath, "-C", root, "merge", "feature/login", "--dry-run"],
       projectRoot,
     );
 
@@ -75,29 +81,86 @@ describe("merge command", () => {
     expect(result.stdout).toContain("From          feature/login");
     expect(result.stdout).toContain("Relationship  diverged");
     expect(result.stdout).toContain("Incoming commits");
-    expect(result.stdout).toContain("$ git merge --no-ff --no-edit feature/login");
+    expect(result.stdout).toContain("$ git merge --no-ff --no-edit --log feature/login");
   });
 
-  it("rejects divergent branches under ff-only", async () => {
-    const root = await createDivergedBranches();
+  it("creates an explicit merge commit when the relationship allows a fast-forward", async () => {
+    const root = await createRepository();
+    await git(root, "checkout", "-b", "feature/published");
+    await addLocalCommit(root);
+    await git(root, "checkout", "main");
     const result = await run(
       process.execPath,
-      [cliPath, "--json", "-C", root, "merge", "feature/login", "--dry-run"],
+      [cliPath, "--json", "-C", root, "merge", "feature/published", "--no-fetch", "--yes"],
       projectRoot,
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({
-      ok: false,
-      error: { code: "NON_FAST_FORWARD_MERGE" },
+      ok: true,
+      command: "merge",
+      data: {
+        strategy: "no-ff",
+        comparison: { relationship: "fast-forward" },
+        completed: true,
+      },
+    });
+    expect(await git(root, "rev-list", "--parents", "-1", "HEAD")).toMatch(
+      /^[0-9a-f]{40} [0-9a-f]{40} [0-9a-f]{40}$/,
+    );
+    expect(await git(root, "log", "-1", "--format=%B")).toContain("feat: add local.txt");
+  });
+
+  it("fetches remote branches by default before resolving the merge source", async () => {
+    const { local, seed } = await createSynchronizableRepository();
+    await git(seed, "checkout", "-b", "feature/remote");
+    await addLocalCommit(seed, "remote-feature.txt");
+    await git(seed, "push", "-u", "origin", "feature/remote");
+
+    const result = await run(
+      process.execPath,
+      [cliPath, "--json", "-C", local, "merge", "origin/feature/remote", "--yes"],
+      projectRoot,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: true,
+      command: "merge",
+      data: {
+        source: "origin/feature/remote",
+        fetched: true,
+        strategy: "no-ff",
+        completed: true,
+      },
     });
   });
 
-  it("creates an explicit merge commit when no-ff is selected", async () => {
+  it("allows explicitly using existing refs without fetching", async () => {
+    const root = await createRepository();
+    await git(root, "checkout", "-b", "feature/local");
+    await addLocalCommit(root);
+    await git(root, "checkout", "main");
+
+    const result = await run(
+      process.execPath,
+      [cliPath, "--json", "-C", root, "merge", "feature/local", "--no-fetch", "--dry-run"],
+      projectRoot,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: true,
+      command: "merge",
+      data: { dryRun: true, fetched: false },
+    });
+  });
+
+  it("creates an explicit merge commit when branches have diverged", async () => {
     const root = await createDivergedBranches();
     const result = await run(
       process.execPath,
-      [cliPath, "--json", "-C", root, "merge", "feature/login", "--strategy", "no-ff", "--yes"],
+      [cliPath, "--json", "-C", root, "merge", "feature/login", "--no-fetch", "--yes"],
       projectRoot,
     );
 
@@ -126,7 +189,7 @@ describe("merge command", () => {
 
     const merge = await run(
       process.execPath,
-      [cliPath, "--json", "-C", root, "merge", "feature/conflict", "--strategy", "no-ff", "--yes"],
+      [cliPath, "--json", "-C", root, "merge", "feature/conflict", "--no-fetch", "--yes"],
       projectRoot,
     );
     expect(merge.exitCode).toBe(1);
@@ -163,7 +226,7 @@ describe("merge command", () => {
     await git(root, "commit", "-m", "feat: edit from main");
     await run(
       process.execPath,
-      [cliPath, "-C", root, "merge", "feature/conflict", "--strategy", "no-ff", "--yes"],
+      [cliPath, "-C", root, "merge", "feature/conflict", "--no-fetch", "--yes"],
       projectRoot,
     );
     await writeFile(join(root, "README.md"), "resolved\n");

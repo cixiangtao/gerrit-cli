@@ -18,7 +18,7 @@ import { runSync } from "./commands/sync.js";
 import { CliError, toCliError } from "./core/errors.js";
 import { createOutput } from "./core/output.js";
 import { resolveRootArguments } from "./interactive.js";
-import type { GlobalOptions, MergeStrategy, SyncStrategy } from "./types.js";
+import type { GlobalOptions, SyncStrategy } from "./types.js";
 
 const readPackageVersion = async () => {
   const manifest: unknown = JSON.parse(
@@ -38,7 +38,6 @@ const readPackageVersion = async () => {
 // package.json is the single public version owner for source and packed executions.
 const VERSION = await readPackageVersion();
 const SYNC_STRATEGIES = ["ff-only", "merge", "rebase"] as const;
-const MERGE_STRATEGIES = ["ff-only", "ff", "no-ff"] as const;
 const NOTIFY_VALUES = ["NONE", "OWNER", "OWNER_REVIEWERS", "ALL"] as const;
 const helpColors = pc.createColors(pc.isColorSupported);
 
@@ -148,15 +147,10 @@ addRepositoryOptions(
 
 program
   .command("merge")
-  .description("Merge a local or remote branch into the current branch")
+  .description("Create an explicit merge commit from a local or remote branch")
   .argument("[source]", "Local or remote branch to merge")
   .option("--remote <name>", "Git remote to refresh before selecting a branch")
-  .addOption(
-    new Option("--strategy <strategy>", "Merge strategy")
-      .choices(MERGE_STRATEGIES)
-      .default("ff-only"),
-  )
-  .option("--fetch", "Refresh the selected remote before planning the merge", false)
+  .option("--no-fetch", "Use existing refs without refreshing the selected remote")
   .option("--continue", "Continue an in-progress merge after resolving conflicts", false)
   .option("--abort", "Abort an in-progress merge and restore the pre-merge state", false)
   .option("--dry-run", "Show the merge plan without fetching or changing history", false)
@@ -164,7 +158,7 @@ program
   .action(
     async (
       source: string | undefined,
-      options: MergeOptions & { remote?: string; strategy: MergeStrategy },
+      options: MergeOptions & { remote?: string },
       command: Command,
     ) => {
       await run(command, (global, output) =>
