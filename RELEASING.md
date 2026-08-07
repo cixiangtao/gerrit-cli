@@ -43,7 +43,7 @@ Before the first release, the repository owner must:
 - enable private vulnerability reporting, dependency graph, Dependabot alerts and security updates,
   secret scanning, and push protection where available;
 - configure the npm trusted publisher for package `@anys/gerrit-cli`, repository
-  `cixiangtao/gerrit-flow`, workflow `release.yml`, and environment `npm`;
+  `cixiangtao/gerrit-cli`, workflow `release.yml`, and environment `npm`;
 - create and, if desired, protect the GitHub `npm` environment.
 
 Because npm exposes trusted-publisher settings only after a package exists, the first version may

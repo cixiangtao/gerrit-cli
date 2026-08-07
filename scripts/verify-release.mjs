@@ -5,7 +5,7 @@ const releaseRef = process.env.GITHUB_REF;
 const repository = process.env.GITHUB_REPOSITORY;
 const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 
-if (repository !== "cixiangtao/gerrit-flow") {
+if (repository !== "cixiangtao/gerrit-cli") {
   throw new Error(`Refusing release from unexpected repository: ${repository ?? "unknown"}`);
 }
 if (releaseRef !== "refs/heads/main") {

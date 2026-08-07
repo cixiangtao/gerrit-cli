@@ -2,7 +2,7 @@
 
 ## Where to ask
 
-- Use [GitHub Issues](https://github.com/cixiangtao/gerrit-flow/issues) for reproducible CLI bugs and
+- Use [GitHub Issues](https://github.com/cixiangtao/gerrit-cli/issues) for reproducible CLI bugs and
   focused feature requests.
 - Use your Gerrit administrator or internal platform team for Gerrit permissions, SSH keys, network
   access, server plugins, and organization-specific review policy.

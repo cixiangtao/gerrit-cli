@@ -6,8 +6,8 @@ A safe local Git workflow CLI for [Gerrit Code Review](https://www.gerritcoderev
 
 ## Documentation
 
-- [Full documentation](https://github.com/cixiangtao/gerrit-flow)
-- [简体中文](https://github.com/cixiangtao/gerrit-flow/blob/main/docs/README.zh-CN.md)
+- [Full documentation](https://github.com/cixiangtao/gerrit-cli)
+- [简体中文](https://github.com/cixiangtao/gerrit-cli/blob/main/docs/README.zh-CN.md)
 
 ## Install
 
@@ -37,4 +37,4 @@ before a live review push. Use explicit commands and `--json` in automation.
 
 ## License
 
-[MIT](https://github.com/cixiangtao/gerrit-flow/blob/main/LICENSE)
+[MIT](https://github.com/cixiangtao/gerrit-cli/blob/main/LICENSE)

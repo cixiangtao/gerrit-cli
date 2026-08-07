@@ -7,7 +7,7 @@
 
 > 这是非官方社区项目，与 Gerrit 项目不存在隶属或背书关系。CLI 运行界面与 JSON 契约仅使用英文。
 
-[English documentation](https://github.com/cixiangtao/gerrit-flow)
+[English documentation](https://github.com/cixiangtao/gerrit-cli)
 
 ## 当前状态
 
@@ -193,7 +193,7 @@ pnpm release:check
 
 ## 支持与安全
 
-- 搜索已有报告后，使用 [GitHub Issues](https://github.com/cixiangtao/gerrit-flow/issues) 提交可复现
+- 搜索已有报告后，使用 [GitHub Issues](https://github.com/cixiangtao/gerrit-cli/issues) 提交可复现
   Bug 或聚焦的功能建议。
 - 使用边界见 [SUPPORT](../SUPPORT.md)。
 - 不要在公开 Issue 中披露漏洞，安全报告方式见 [SECURITY](../SECURITY.md)。

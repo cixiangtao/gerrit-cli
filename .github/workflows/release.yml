@@ -15,7 +15,7 @@ concurrency:
 jobs:
   publish:
     name: Publish npm package and GitHub Release
-    if: github.repository == 'cixiangtao/gerrit-flow' && github.ref == 'refs/heads/main'
+    if: github.repository == 'cixiangtao/gerrit-cli' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: npm

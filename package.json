@@ -9,15 +9,15 @@
     "git",
     "workflow"
   ],
-  "homepage": "https://github.com/cixiangtao/gerrit-flow",
+  "homepage": "https://github.com/cixiangtao/gerrit-cli",
   "bugs": {
-    "url": "https://github.com/cixiangtao/gerrit-flow/issues"
+    "url": "https://github.com/cixiangtao/gerrit-cli/issues"
   },
   "license": "MIT",
   "author": "cixiangtao",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cixiangtao/gerrit-flow.git"
+    "url": "git+https://github.com/cixiangtao/gerrit-cli.git"
   },
   "bin": {
     "gerrit": "dist/cli.js"

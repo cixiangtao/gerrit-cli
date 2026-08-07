@@ -201,7 +201,7 @@ for the Actions-only release contract.
 
 ## Support and security
 
-- Use [GitHub Issues](https://github.com/cixiangtao/gerrit-flow/issues) for reproducible bugs and
+- Use [GitHub Issues](https://github.com/cixiangtao/gerrit-cli/issues) for reproducible bugs and
   focused feature requests after searching existing reports.
 - Read [SUPPORT](../SUPPORT.md) for usage boundaries.
 - Do not disclose vulnerabilities in public issues. Follow [SECURITY](../SECURITY.md).
