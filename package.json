@@ -1,6 +1,6 @@
 {
   "name": "@anys/gerrit-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A safe local Git workflow CLI for Gerrit Code Review.",
   "keywords": [
     "cli",
