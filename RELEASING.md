@@ -1,78 +1,73 @@
 # Releasing
 
-GitHub Actions is the sole formal publisher for npm and GitHub Releases. Local commands validate and
-prepare a version change; they do not publish a package or create a release tag.
+GitHub Actions is the sole npm and GitHub Release publisher. Release Please automatically creates
+or updates the release pull request; local commands never publish, create release tags, or bump the
+public version manually.
 
 ## Release contract
 
-| Concern        | Decision                                                                                          |
-| -------------- | ------------------------------------------------------------------------------------------------- |
-| Version owner  | Root `package.json`; the CLI reads it at runtime                                                  |
-| Version policy | Semantic Versioning; versions below `1.0.0` may change public contracts                           |
-| Release source | Current protected `main` commit                                                                   |
-| Gate           | Required pull request checks plus a clean `pnpm release:check` in the release workflow            |
-| Notes          | GitHub-generated release notes                                                                    |
-| Git            | Actions creates annotated `v<version>` tags                                                       |
-| Authority      | Manual dispatch of `.github/workflows/release.yml` from `main`                                    |
-| Delivery       | Public npm package and GitHub Release                                                             |
-| Credentials    | npm trusted publishing with GitHub Actions OIDC only                                              |
-| Prereleases    | Not supported by the current workflow                                                             |
-| Recovery       | Reruns accept only an existing tag at the same commit and an npm artifact with matching integrity |
+| Concern        | Decision                                                                                           |
+| -------------- | -------------------------------------------------------------------------------------------------- |
+| Version owner  | Root `package.json`; Release Please synchronizes `.release-please-manifest.json`                   |
+| Version policy | Stable Semantic Versioning; versions below `1.0.0` may change public contracts                     |
+| Release source | The exact merge commit of an automated release PR into protected `main`                            |
+| Gate           | Required PR checks, release-only file allowlist, `pnpm release:check`, and package consumer checks |
+| Notes          | Release Please-managed `CHANGELOG.md` plus GitHub-generated release notes                          |
+| Git            | Actions creates annotated `v<version>` tags at the accepted release merge                          |
+| Authority      | `.github/workflows/release.yml`; generic pushes can maintain a PR but cannot publish               |
+| Delivery       | Public npm package and GitHub Release                                                              |
+| Credentials    | GitHub App for release PRs; npm trusted publishing with GitHub Actions OIDC                        |
+| Prereleases    | Not supported by the current workflow                                                              |
+| Recovery       | Retry only after checking the PR merge, tag, npm integrity, provenance, and GitHub Release         |
 
-## Prepare a release
+## Normal flow
 
-1. Ensure product changes are merged into `main` through reviewed pull requests and required checks.
-2. Create a release pull request from the current `main` head that changes only the version in
-   `package.json`, the lockfile if required, release documentation, and intentional generated release
-   metadata.
-3. Run `pnpm release:check` and review the packed artifact summary.
-4. Merge the release pull request after its required checks and reviews pass.
-5. From the Actions tab, run **Release** on `main` and enter the exact manifest version without the
-   `v` prefix.
-6. Verify the workflow, `v<version>` tag, GitHub Release, npm version, npm `latest` tag, provenance,
-   downloaded package integrity, and a fresh `npx @anys/gerrit-cli@<version> --version` invocation.
+1. Merge ordinary changes into protected `main` through pull requests and required checks. Unrelated
+   open pull requests may remain open.
+2. Release Please creates or updates one PR from a
+   `release-please--branches--main--...` branch. Conventional commit or squash-merge titles determine
+   the proposed version and changelog (`fix` = patch, `feat` = minor, and `!` or
+   `BREAKING CHANGE` = major).
+3. Review the release-only diff, proposed version, `CHANGELOG.md`, checks, and approval, then manually
+   merge that release PR when the version should be published.
+4. The Release workflow revalidates that exact merge, packs and verifies one immutable artifact,
+   creates `vX.Y.Z`, publishes through npm trusted publishing, and creates the matching GitHub
+   Release.
+5. Verify the tag target, GitHub Release, npm version and `latest`, provenance, public tarball, and a
+   fresh `npx @anys/gerrit-cli@<version> --version` invocation.
 
-Before the first release, the repository owner must:
+Do not bump versions, create tags, dispatch a parallel publisher, or publish from a workstation.
+Configuration, implementation, documentation, and dependency changes belong in ordinary PRs, not
+the automated release PR.
 
-- create the public GitHub repository and push `main`;
-- set the GitHub About description, topics, Issues availability, and default branch to match the
-  package metadata and documentation;
-- protect `main` with pull requests and the required checks `Quality (Node 22.14.0)`,
-  `Quality (Node 24)`, `Package and consumer contract`, `Analyze JavaScript and TypeScript`, and
-  `Dependency review`;
-- enable private vulnerability reporting, dependency graph, Dependabot alerts and security updates,
-  secret scanning, and push protection where available;
-- configure the npm trusted publisher for package `@anys/gerrit-cli`, repository
-  `cixiangtao/gerrit-cli`, workflow `release.yml`, and environment `npm`;
-- create and, if desired, protect the GitHub `npm` environment.
+## Automation and recovery
 
-The initial package bootstrap is complete. The repository must not define an `NPM_TOKEN` secret;
-all future npm publications authenticate through the configured OIDC trusted publisher. npm package
-settings require 2FA and disallow bypass-2FA tokens.
+The repository defines `RELEASE_APP_CLIENT_ID` and `RELEASE_APP_PRIVATE_KEY` for the
+`cixiangtao-release-controller` GitHub App. The App has Contents, Issues, and Pull requests
+read/write permissions only for selected repositories, allowing release PR checks to start without
+using a long-lived personal token.
 
-After the first successful release, evaluate a `v*` tag ruleset that permits the release workflow
-to create immutable tags while preventing manual deletion or retargeting. Do not rely on that rule
-until its actual bypass and workflow behavior have been tested remotely.
+The npm trusted publisher remains scoped to package `@anys/gerrit-cli`, repository
+`cixiangtao/gerrit-cli`, workflow `release.yml`, environment `npm`, and the `npm publish` action.
+The repository must not define an `NPM_TOKEN` secret.
 
-The repository configuration is not proof of publication. A release is complete only after every
-named remote and public surface has been independently checked.
+If publication partially fails, inspect the merged release PR, workflow jobs, tag target, GitHub
+Release, npm version, `latest`, integrity, and provenance before rerunning the same workflow. Never
+reuse, delete, overwrite, or republish an existing version as recovery.
 
 ## 简体中文
 
-GitHub Actions 是 npm 和 GitHub Release 的唯一正式发布者。本地命令只验证并准备版本改动，不发布
-npm，也不创建发布 tag。
+GitHub Actions 是 npm 和 GitHub Release 的唯一正式发布者，Release Please 自动创建或更新发布
+PR。本地命令不发布 npm、不创建发布 Tag，也不手动修改公开版本号。
 
-1. 所有产品改动必须通过受保护 `main` 的 Pull Request 和必需检查。
-2. 从最新 `main` 创建发布 PR，只修改 `package.json` 版本、必要的 lockfile、发布文档和明确的发布元数据。
-3. 运行 `pnpm release:check`，检查真实 npm 包验证结果。
-4. 必需检查和审核通过后合并发布 PR。
-5. 在 Actions 中从 `main` 手动运行 **Release**，输入不带 `v` 的准确版本。
-6. 独立核对 workflow、tag、GitHub Release、npm 版本与 `latest`、provenance、公开包完整性和全新 `npx`。
+1. 普通改动必须通过受保护 `main` 的 PR、必需检查和审核；无关的开放 PR 不会阻塞发版。
+2. Release Please 根据 Conventional Commit 或 squash merge 标题维护唯一的发布 PR，并自动更新
+   版本号和 `CHANGELOG.md`。
+3. 确认版本、发布记录、检查和审批后，由维护者手动合并该发布 PR；这次合并就是正式发版开关。
+4. Release 工作流验证该发布 PR 的准确身份和文件边界，然后打包一次、创建 `vX.Y.Z`、通过 npm
+   Trusted Publishing 发布，并创建对应 GitHub Release。
+5. 最后独立核对 Tag 指向、GitHub Release、npm 版本与 `latest`、provenance、公开包完整性和全新
+   `npx` 调用。
 
-首次发布前，仓库所有者还必须建立公开仓库与 `origin`、保护 `main`、开启私密漏洞报告和安全功能，
-同步 GitHub About/Topics/Issues，并为 `@anys/gerrit-cli` 配置 workflow=`release.yml`、
-environment=`npm` 的 npm trusted publisher。首次发布成功后，可以再评估只允许发布工作流创建、且禁止
-手动删除或改指向的 `v*` tag ruleset；远程行为验证前不要依赖该规则。
-
-首版引导已经完成。仓库不得再配置 `NPM_TOKEN` secret；后续 npm 发布必须使用已配置的 OIDC trusted
-publisher。npm 包设置已要求 2FA 并禁止 bypass-2FA Token。
+不要在本地改版本、打发布 Tag、上传 npm，也不要保留可绕过发布 PR 的手动工作流入口。失败重试前
+必须先核对 PR、工作流、Tag、GitHub Release 和 npm 的实际状态。

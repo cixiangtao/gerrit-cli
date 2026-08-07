@@ -9,7 +9,7 @@ if (repository !== "cixiangtao/gerrit-cli") {
   throw new Error(`Refusing release from unexpected repository: ${repository ?? "unknown"}`);
 }
 if (releaseRef !== "refs/heads/main") {
-  throw new Error(`Releases must be dispatched from main, received: ${releaseRef ?? "unknown"}`);
+  throw new Error(`Releases must run from main, received: ${releaseRef ?? "unknown"}`);
 }
 if (!releaseVersion || !/^\d+\.\d+\.\d+$/.test(releaseVersion)) {
   throw new Error("RELEASE_VERSION must be a stable semantic version such as 0.1.0.");

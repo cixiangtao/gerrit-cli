@@ -1,35 +1,119 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: Stable package version from package.json, without the v prefix
-        required: true
-        type: string
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
 
 concurrency:
-  group: release-${{ inputs.version }}
+  group: npm-release
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Publish npm package and GitHub Release
-    if: github.repository == 'cixiangtao/gerrit-cli' && github.ref == 'refs/heads/main'
+  gate:
+    name: Verify merged release PR
     runs-on: ubuntu-latest
-    environment:
-      name: npm
-      url: https://www.npmjs.com/package/@anys/gerrit-cli
-    permissions:
-      contents: write
-      id-token: write
-    env:
-      RELEASE_VERSION: ${{ inputs.version }}
+    timeout-minutes: 10
+    outputs:
+      release: ${{ steps.release.outputs.release }}
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
     steps:
       - name: Check out the release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Verify release admission
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          echo "release=false" >> "$GITHUB_OUTPUT"
+          pull_requests="$(gh api -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/commits/${RELEASE_SHA}/pulls")"
+          release_pr="$(jq -c '
+            [.[]
+              | select(.merged_at != null)
+              | select(.merge_commit_sha == env.RELEASE_SHA)
+              | select(.base.ref == "main")
+              | select(.head.repo.full_name == env.GITHUB_REPOSITORY)
+              | select(.head.ref | startswith("release-please--branches--main--"))
+              | select([.labels[].name] | any(. == "autorelease: pending" or . == "autorelease: tagged"))]
+            | if length == 1 then .[0] else empty end
+          ' <<< "$pull_requests")"
+          if [[ -z "$release_pr" ]]; then
+            echo "This commit is not the merge of one automated release PR; publication is skipped."
+            exit 0
+          fi
+
+          pr_number="$(jq -r '.number' <<< "$release_pr")"
+          base_sha="$(git rev-parse "${RELEASE_SHA}^")"
+          version="$(node -p 'require("./package.json").version')"
+          tag="v${version}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Only stable semantic versions are supported: ${version}" >&2
+            exit 1
+          fi
+
+          changed_files="$(gh api --paginate \
+            "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files" --jq '.[].filename')"
+          while IFS= read -r file; do
+            case "$file" in
+              .release-please-manifest.json|CHANGELOG.md|package.json) ;;
+              *)
+                echo "Release PR #${pr_number} contains non-release file: ${file}" >&2
+                exit 1
+                ;;
+            esac
+          done <<< "$changed_files"
+
+          git show "${base_sha}:package.json" > "$RUNNER_TEMP/package.base.json"
+          base_version="$(node -p 'require(process.argv[1]).version' "$RUNNER_TEMP/package.base.json")"
+          if [[ "$base_version" == "$version" ]]; then
+            echo "Release PR did not change the package version." >&2
+            exit 1
+          fi
+          jq -S 'del(.version)' "$RUNNER_TEMP/package.base.json" \
+            > "$RUNNER_TEMP/package.base.normalized.json"
+          jq -S 'del(.version)' package.json \
+            > "$RUNNER_TEMP/package.release.normalized.json"
+          cmp "$RUNNER_TEMP/package.base.normalized.json" \
+            "$RUNNER_TEMP/package.release.normalized.json"
+          grep -F "$version" CHANGELOG.md >/dev/null
+          test "$(jq -r '.["."]' .release-please-manifest.json)" = "$version"
+          RELEASE_VERSION="$version" node scripts/verify-release.mjs
+
+          git fetch --force --tags origin
+          tag_exists="false"
+          if git rev-parse --verify --quiet "refs/tags/${tag}" >/dev/null; then
+            test "$(git rev-list -n 1 "$tag")" = "$RELEASE_SHA"
+            tag_exists="true"
+          fi
+          if npm view "@anys/gerrit-cli@${version}" version >/dev/null 2>&1 \
+            && [[ "$tag_exists" != "true" ]]; then
+            echo "@anys/gerrit-cli@${version} already exists without a matching release tag." >&2
+            exit 1
+          fi
+
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build and verify npm artifact
+    needs: gate
+    if: needs.gate.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
@@ -39,90 +123,146 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-          cache: pnpm
+          package-manager-cache: false
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate and pack the immutable artifact
+        run: |
+          pnpm release:check
+          node scripts/verify-package.mjs --output .release
+      - name: Upload the verified artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gerrit-cli-npm-${{ needs.gate.outputs.version }}
+          path: .release/*.tgz
+          if-no-files-found: error
+
+  publish:
+    name: Tag and publish npm package
+    needs:
+      - gate
+      - build
+    if: needs.gate.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@anys/gerrit-cli
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Check out the release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
           registry-url: https://registry.npmjs.org/
       - name: Install a trusted-publishing compatible npm CLI
         run: npm install --global npm@11.19.0
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Validate the release contract
-        run: |
-          node scripts/verify-release.mjs
-          pnpm release:check
-      - name: Build and verify the immutable npm artifact
-        run: node scripts/verify-package.mjs --output .release
+      - name: Download the verified artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: gerrit-cli-npm-${{ needs.gate.outputs.version }}
+          path: artifacts
       - name: Create or verify the release tag
+        env:
+          TAG: ${{ needs.gate.outputs.tag }}
         run: |
-          set -euo pipefail
-          release_tag="v${RELEASE_VERSION}"
-          head_commit="$(git rev-parse HEAD)"
           git fetch --force --tags origin
-          if git rev-parse --verify --quiet "refs/tags/${release_tag}" >/dev/null; then
-            tag_commit="$(git rev-list -n 1 "${release_tag}")"
-            if [ "${tag_commit}" != "${head_commit}" ]; then
-              echo "Existing ${release_tag} targets ${tag_commit}, expected ${head_commit}." >&2
-              exit 1
-            fi
-            echo "Verified existing ${release_tag} at ${head_commit}."
+          if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
+            test "$(git rev-list -n 1 "$TAG")" = "$GITHUB_SHA"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag --annotate "${release_tag}" --message "${release_tag}"
-            git push origin "refs/tags/${release_tag}"
+            git tag --annotate "$TAG" --message "$TAG" "$GITHUB_SHA"
+            git push origin "refs/tags/${TAG}"
           fi
       - name: Publish or verify the npm package
+        env:
+          VERSION: ${{ needs.gate.outputs.version }}
         run: |
-          set -euo pipefail
-          package_name="$(node --input-type=module --eval 'import manifest from "./package.json" with { type: "json" }; console.log(manifest.name)')"
-          package_spec="${package_name}@${RELEASE_VERSION}"
-          archive_count="$(find .release -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')"
-          if [ "${archive_count}" != "1" ]; then
+          package_spec="@anys/gerrit-cli@${VERSION}"
+          archive_count="$(find artifacts -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')"
+          if [[ "$archive_count" != "1" ]]; then
             echo "Expected one release archive, found ${archive_count}." >&2
             exit 1
           fi
-          archive="$(find .release -maxdepth 1 -type f -name '*.tgz' -print -quit)"
-          local_integrity="$(node --input-type=module --eval 'import { createHash } from "node:crypto"; import { readFileSync } from "node:fs"; const value = createHash("sha512").update(readFileSync(process.argv[1])).digest("base64"); console.log(`sha512-${value}`)' "${archive}")"
+          archive="$(find artifacts -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          local_integrity="$(node --input-type=module --eval \
+            'import { createHash } from "node:crypto"; import { readFileSync } from "node:fs"; const value = createHash("sha512").update(readFileSync(process.argv[1])).digest("base64"); console.log(`sha512-${value}`)' \
+            "$archive")"
 
-          if remote_integrity="$(npm view "${package_spec}" dist.integrity 2>/dev/null)"; then
-            if [ "${remote_integrity}" != "${local_integrity}" ]; then
+          if remote_integrity="$(npm view "$package_spec" dist.integrity 2>/dev/null)"; then
+            if [[ "$remote_integrity" != "$local_integrity" ]]; then
               echo "${package_spec} already exists with different integrity." >&2
               exit 1
             fi
             echo "Verified existing ${package_spec}; skipping duplicate publish."
           else
-            npm publish "${archive}" --access public --provenance
+            npm publish "$archive" --access public --provenance
           fi
 
           remote_integrity=""
           for attempt in 1 2 3 4 5 6; do
-            if remote_integrity="$(npm view "${package_spec}" dist.integrity 2>/dev/null)"; then
+            if remote_integrity="$(npm view "$package_spec" dist.integrity 2>/dev/null)"; then
               break
             fi
             sleep 10
           done
-          if [ "${remote_integrity}" != "${local_integrity}" ]; then
-            echo "Public npm integrity verification failed for ${package_spec}." >&2
-            exit 1
-          fi
-          remote_latest="$(npm view "${package_name}" dist-tags.latest)"
-          if [ "${remote_latest}" != "${RELEASE_VERSION}" ]; then
-            echo "npm latest points to ${remote_latest}, expected ${RELEASE_VERSION}." >&2
-            exit 1
-          fi
-          attestation_url="$(npm view "${package_spec}" dist.attestations.url)"
-          if [ -z "${attestation_url}" ]; then
-            echo "npm provenance attestation is missing for ${package_spec}." >&2
-            exit 1
-          fi
+          test "$remote_integrity" = "$local_integrity"
+          test "$(npm view @anys/gerrit-cli dist-tags.latest)" = "$VERSION"
+          test -n "$(npm view "$package_spec" dist.attestations.url)"
       - name: Create or verify the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.gate.outputs.tag }}
         run: |
-          set -euo pipefail
-          release_tag="v${RELEASE_VERSION}"
-          if ! gh release view "${release_tag}" >/dev/null 2>&1; then
-            gh release create "${release_tag}" --generate-notes --title "${release_tag}" --verify-tag
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --generate-notes --latest --title "$TAG" --verify-tag
           fi
-          release_json="$(gh release view "${release_tag}" --json tagName,isDraft,isPrerelease)"
-          echo "${release_json}" | jq --exit-status --arg tag "${release_tag}" \
-            '.tagName == $tag and (.isDraft | not) and (.isPrerelease | not)'
+          release_json="$(gh release view "$TAG" --json tagName,isDraft,isPrerelease,url)"
+          jq --exit-status --arg tag "$TAG" \
+            '.tagName == $tag and (.isDraft | not) and (.isPrerelease | not)' \
+            <<< "$release_json"
+
+  release-pr:
+    name: Maintain automated release PR
+    needs:
+      - gate
+      - publish
+    if: >-
+      always() &&
+      needs.gate.result == 'success' &&
+      (needs.gate.outputs.release != 'true' || needs.publish.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Verify release controller credentials
+        env:
+          CLIENT_ID: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+        run: |
+          test -n "$CLIENT_ID" || { echo "RELEASE_APP_CLIENT_ID is not configured." >&2; exit 1; }
+          test -n "$PRIVATE_KEY" || { echo "RELEASE_APP_PRIVATE_KEY is not configured." >&2; exit 1; }
+      - name: Create short-lived release controller token
+        id: release-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+      - name: Create or update release PR
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.release-token.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
