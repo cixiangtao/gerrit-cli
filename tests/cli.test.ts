@@ -11,9 +11,10 @@ const cliPath = join(projectRoot, "dist", "cli.js");
 
 describe("CLI", () => {
   it("shows the complete command surface", async () => {
+    const version = await run(process.execPath, [cliPath, "--version"], projectRoot);
     const result = await run(process.execPath, [cliPath, "--help"], projectRoot);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Gerrit CLI v0.1.0");
+    expect(result.stdout).toContain(`Gerrit CLI v${version.stdout}`);
     expect(result.stdout).toContain("Usage: gerrit");
     expect(result.stdout).toContain("doctor");
     expect(result.stdout).toContain("setup");
