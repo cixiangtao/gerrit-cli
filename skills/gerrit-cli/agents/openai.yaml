@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gerrit CLI"
+  short_description: "Inspect and submit Gerrit reviews safely"
+  default_prompt: "Use $gerrit-cli to inspect this repository and preview a safe Gerrit review push."
