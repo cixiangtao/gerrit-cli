@@ -1,0 +1,132 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable package version from package.json, without the v prefix
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish npm package and GitHub Release
+    if: github.repository == 'cixiangtao/gerrit-flow' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@anys/gerrit-cli
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - name: Check out the release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 10.34.5
+          run_install: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org/
+      - name: Install a trusted-publishing compatible npm CLI
+        run: npm install --global npm@11.19.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate the release contract
+        run: |
+          node scripts/verify-release.mjs
+          pnpm release:check
+      - name: Build and verify the immutable npm artifact
+        run: node scripts/verify-package.mjs --output .release
+      - name: Create or verify the release tag
+        run: |
+          set -euo pipefail
+          release_tag="v${RELEASE_VERSION}"
+          head_commit="$(git rev-parse HEAD)"
+          git fetch --force --tags origin
+          if git rev-parse --verify --quiet "refs/tags/${release_tag}" >/dev/null; then
+            tag_commit="$(git rev-list -n 1 "${release_tag}")"
+            if [ "${tag_commit}" != "${head_commit}" ]; then
+              echo "Existing ${release_tag} targets ${tag_commit}, expected ${head_commit}." >&2
+              exit 1
+            fi
+            echo "Verified existing ${release_tag} at ${head_commit}."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag --annotate "${release_tag}" --message "${release_tag}"
+            git push origin "refs/tags/${release_tag}"
+          fi
+      - name: Publish or verify the npm package
+        env:
+          # NPM_TOKEN is a one-time bootstrap fallback for the first package version. Delete the
+          # repository secret after configuring npm trusted publishing; OIDC is attempted first.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          package_name="$(node --input-type=module --eval 'import manifest from "./package.json" with { type: "json" }; console.log(manifest.name)')"
+          package_spec="${package_name}@${RELEASE_VERSION}"
+          archive_count="$(find .release -maxdepth 1 -type f -name '*.tgz' | wc -l | tr -d ' ')"
+          if [ "${archive_count}" != "1" ]; then
+            echo "Expected one release archive, found ${archive_count}." >&2
+            exit 1
+          fi
+          archive="$(find .release -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          local_integrity="$(node --input-type=module --eval 'import { createHash } from "node:crypto"; import { readFileSync } from "node:fs"; const value = createHash("sha512").update(readFileSync(process.argv[1])).digest("base64"); console.log(`sha512-${value}`)' "${archive}")"
+
+          if remote_integrity="$(npm view "${package_spec}" dist.integrity 2>/dev/null)"; then
+            if [ "${remote_integrity}" != "${local_integrity}" ]; then
+              echo "${package_spec} already exists with different integrity." >&2
+              exit 1
+            fi
+            echo "Verified existing ${package_spec}; skipping duplicate publish."
+          else
+            npm publish "${archive}" --access public --provenance
+          fi
+
+          remote_integrity=""
+          for attempt in 1 2 3 4 5 6; do
+            if remote_integrity="$(npm view "${package_spec}" dist.integrity 2>/dev/null)"; then
+              break
+            fi
+            sleep 10
+          done
+          if [ "${remote_integrity}" != "${local_integrity}" ]; then
+            echo "Public npm integrity verification failed for ${package_spec}." >&2
+            exit 1
+          fi
+          remote_latest="$(npm view "${package_name}" dist-tags.latest)"
+          if [ "${remote_latest}" != "${RELEASE_VERSION}" ]; then
+            echo "npm latest points to ${remote_latest}, expected ${RELEASE_VERSION}." >&2
+            exit 1
+          fi
+          attestation_url="$(npm view "${package_spec}" dist.attestations.url)"
+          if [ -z "${attestation_url}" ]; then
+            echo "npm provenance attestation is missing for ${package_spec}." >&2
+            exit 1
+          fi
+      - name: Create or verify the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_tag="v${RELEASE_VERSION}"
+          if ! gh release view "${release_tag}" >/dev/null 2>&1; then
+            gh release create "${release_tag}" --generate-notes --title "${release_tag}" --verify-tag
+          fi
+          release_json="$(gh release view "${release_tag}" --json tagName,isDraft,isPrerelease)"
+          echo "${release_json}" | jq --exit-status --arg tag "${release_tag}" \
+            '.tagName == $tag and (.isDraft | not) and (.isPrerelease | not)'
