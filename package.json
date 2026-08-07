@@ -36,7 +36,7 @@
   },
   "scripts": {
     "audit:prod": "pnpm audit --prod --audit-level high",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/finalize-build.mjs",
     "check": "pnpm lint && pnpm type-check && pnpm test",
     "dev": "tsx src/cli.ts",
     "format": "oxfmt .",
