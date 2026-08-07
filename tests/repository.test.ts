@@ -8,6 +8,7 @@ import { inspectHook } from "../src/core/hooks.js";
 import {
   getAheadBehind,
   getOutgoingCommits,
+  getRemoteBranchesContainingCommit,
   resolveRepositoryContext,
 } from "../src/core/repository.js";
 import { addReviewCommit, createRepository, git } from "./helpers.js";
@@ -45,6 +46,17 @@ describe("repository inspection", () => {
     await expect(getAheadBehind(root, "origin/main")).resolves.toEqual({ ahead: 1, behind: 0 });
     await expect(getOutgoingCommits(root, "origin/main")).resolves.toMatchObject([
       { subject: "feat: add feature", changeId: "Iabcdef0123456789abcdef0123456789abcdef01" },
+    ]);
+  });
+
+  it("finds remote branches that already contain a commit", async () => {
+    const root = await createRepository();
+    await git(root, "checkout", "-b", "feature/published");
+    await addReviewCommit(root);
+    await git(root, "update-ref", "refs/remotes/origin/feature/published", "HEAD");
+
+    await expect(getRemoteBranchesContainingCommit(root, "origin", "HEAD")).resolves.toEqual([
+      "origin/feature/published",
     ]);
   });
 

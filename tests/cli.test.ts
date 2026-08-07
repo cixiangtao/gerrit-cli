@@ -4,7 +4,13 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { addReviewCommit, createRepository, git, run } from "./helpers.js";
+import {
+  addReviewCommit,
+  createRepository,
+  createSynchronizableRepository,
+  git,
+  run,
+} from "./helpers.js";
 
 const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const cliPath = join(projectRoot, "dist", "cli.js");
@@ -95,6 +101,36 @@ describe("CLI", () => {
     expect(result.stdout).toContain("No fetch, history update, or push will be performed");
     expect(result.stdout).toContain("Reviewers  alice");
     expect(result.stdout).toContain("$ git push origin HEAD:refs/for/main%r=alice");
+  });
+
+  it("rejects a fast-forwarded HEAD that is already published on another remote branch", async () => {
+    const { local, seed } = await createSynchronizableRepository();
+    await git(seed, "checkout", "-b", "feature/published");
+    await addReviewCommit(seed);
+    await git(seed, "push", "-u", "origin", "feature/published");
+    await git(local, "fetch", "origin");
+    await git(local, "merge", "--ff-only", "origin/feature/published");
+
+    const result = await run(
+      process.execPath,
+      [cliPath, "--json", "-C", local, "review", "--no-sync", "--yes"],
+      projectRoot,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      error: {
+        code: "NO_NEW_CHANGES",
+        message:
+          "HEAD is already published on another remote branch, so Gerrit cannot create a new change.",
+        hints: [
+          "Known remote branch: origin/feature/published",
+          expect.stringContaining("fast-forward merge"),
+          expect.stringContaining("gerrit merge"),
+        ],
+      },
+    });
   });
 
   it("keeps setup dry-run read-only", async () => {
