@@ -136,6 +136,7 @@ jobs:
           name: gerrit-cli-npm-${{ needs.gate.outputs.version }}
           path: .release/*.tgz
           if-no-files-found: error
+          include-hidden-files: true
 
   publish:
     name: Tag and publish npm package
