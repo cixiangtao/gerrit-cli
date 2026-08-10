@@ -45,6 +45,12 @@ updates:
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
+      - dependency-name: "@clack/prompts"
+        update-types:
+          - "version-update:semver-minor"
+      - dependency-name: oxfmt
+        update-types:
+          - "version-update:semver-minor"
     commit-message:
       prefix: fix
       prefix-development: build
