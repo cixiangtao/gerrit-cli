@@ -1,5 +1,7 @@
 # Contributing
 
+English | [简体中文](#简体中文)
+
 Thank you for helping improve `@anys/gerrit-cli`. Small, focused changes with reproducible evidence
 are easiest to review.
 

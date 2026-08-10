@@ -1,5 +1,7 @@
 # @anys/gerrit-cli
 
+English | [简体中文](../docs/README.zh-CN.md)
+
 A safe local Git workflow CLI for [Gerrit Code Review](https://www.gerritcodereview.com/).
 
 `@anys/gerrit-cli` covers the repository-side workflow that generic Gerrit API clients usually do
@@ -7,8 +9,6 @@ not: Change-Id hook setup, local diagnostics, explicit synchronization, and safe
 review pushes.
 
 > Unofficial community project. It is not affiliated with or endorsed by the Gerrit project.
-
-[简体中文文档](../docs/README.zh-CN.md)
 
 ## Status
 

@@ -1,5 +1,7 @@
 # Support
 
+English | [简体中文](#简体中文)
+
 ## Where to ask
 
 - Use [GitHub Issues](https://github.com/cixiangtao/gerrit-cli/issues) for reproducible CLI bugs and

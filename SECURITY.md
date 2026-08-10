@@ -1,5 +1,7 @@
 # Security Policy
 
+English | [简体中文](#简体中文)
+
 ## Supported versions
 
 Security fixes are provided for the latest version published under the npm `latest` tag. Pre-release
