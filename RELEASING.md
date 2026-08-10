@@ -1,5 +1,7 @@
 # Releasing
 
+English | [简体中文](#简体中文)
+
 GitHub Actions is the sole npm and GitHub Release publisher. Release Please automatically creates
 or updates the release pull request; local commands never publish, create release tags, or bump the
 public version manually.
