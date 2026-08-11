@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/cixiangtao/gerrit-cli/compare/v1.0.0...v1.0.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* **cli:** open the Gerrit project homepage ([#18](https://github.com/cixiangtao/gerrit-cli/issues/18)) ([cbf5851](https://github.com/cixiangtao/gerrit-cli/commit/cbf585172712099bfca066e2d27799f57638a340))
+
 ## [1.0.0](https://github.com/cixiangtao/gerrit-cli/compare/v0.3.1...v1.0.0) (2026-08-07)
 
 
