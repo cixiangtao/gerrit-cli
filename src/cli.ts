@@ -232,7 +232,7 @@ addRepositoryOptions(
 addRepositoryOptions(
   program
     .command("open")
-    .description("Open the Gerrit change referenced by HEAD's Change-Id")
+    .description("Open the current project's Gerrit homepage")
     .option("--print", "Print the URL instead of opening a browser", false)
     .option("--dry-run", "Show the browser command without opening it", false),
 ).action(

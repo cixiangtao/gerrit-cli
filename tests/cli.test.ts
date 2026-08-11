@@ -68,9 +68,33 @@ describe("CLI", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("◆ Repository status");
     expect(result.stdout).toContain("Repository  ");
+    expect(result.stdout).toContain(
+      "Project URL  https://gerrit.example.com/admin/repos/example/project",
+    );
     expect(result.stdout).toContain("✓ Worktree");
     expect(result.stdout).toContain("! Change-Id");
     expect(result.stdout).toContain("↑ 0 ahead  ↓ 0 behind");
+  });
+
+  it("prints the current Gerrit project homepage without requiring a HEAD Change-Id", async () => {
+    const root = await createRepository();
+    await git(root, "commit", "--amend", "-m", "chore: initial without change id");
+    const result = await run(
+      process.execPath,
+      [cliPath, "--json", "-C", root, "open", "--print"],
+      projectRoot,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: true,
+      command: "open",
+      data: {
+        changeId: null,
+        url: "https://gerrit.example.com/admin/repos/example/project",
+        dryRun: true,
+      },
+    });
   });
 
   it("distinguishes skipped doctor checks from successful checks", async () => {

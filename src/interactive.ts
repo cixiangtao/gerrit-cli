@@ -53,7 +53,7 @@ export const COMMAND_MENU_OPTIONS = [
   {
     value: "open",
     label: "open",
-    hint: "Open the HEAD change in Gerrit · launches a browser",
+    hint: "Open the current project in Gerrit · launches a browser",
   },
   {
     value: "--help",

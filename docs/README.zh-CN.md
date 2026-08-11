@@ -108,17 +108,17 @@ gerrit review zhangsan,lisi
 
 ## 命令
 
-| 命令                             | 用途                                                 | 是否写入状态     |
-| -------------------------------- | ---------------------------------------------------- | ---------------- |
-| `doctor [--offline]`             | 检查 Git、仓库、hook、remote 和 SSH 就绪状态         | 否               |
-| `status`                         | 显示分支、上游、ahead/behind、待送审提交和 hook 状态 | 否               |
-| `setup [--dry-run]`              | 下载并组合 Gerrit 官方 `commit-msg` hook             | 是               |
-| `amend [--dry-run]`              | 更新提交并上传同一 Change 的新 Patch Set             | 是               |
-| `merge [source] [--dry-run]`     | 以明确的 merge commit 合并来源分支                   | 是               |
-| `sync [--dry-run]`               | 拉取并按显式策略同步目标分支                         | 是               |
-| `review [reviewers] [--dry-run]` | 预检、按需同步并推送到 `refs/for/*`                  | 是               |
-| `open [--print]`                 | 打开 HEAD 的 Change-Id 对应的 Gerrit 变更            | 打开浏览器       |
-| `hook run <file>`                | 与 Husky 等其他 hook 管理器组合                      | 更新提交信息文件 |
+| 命令                             | 用途                                                | 是否写入状态     |
+| -------------------------------- | --------------------------------------------------- | ---------------- |
+| `doctor [--offline]`             | 检查 Git、仓库、hook、remote 和 SSH 就绪状态        | 否               |
+| `status`                         | 显示项目主页、分支、上游、ahead/behind 和 hook 状态 | 否               |
+| `setup [--dry-run]`              | 下载并组合 Gerrit 官方 `commit-msg` hook            | 是               |
+| `amend [--dry-run]`              | 更新提交并上传同一 Change 的新 Patch Set            | 是               |
+| `merge [source] [--dry-run]`     | 以明确的 merge commit 合并来源分支                  | 是               |
+| `sync [--dry-run]`               | 拉取并按显式策略同步目标分支                        | 是               |
+| `review [reviewers] [--dry-run]` | 预检、按需同步并推送到 `refs/for/*`                 | 是               |
+| `open [--print]`                 | 打开当前仓库对应的 Gerrit 项目主页                  | 打开浏览器       |
+| `hook run <file>`                | 与 Husky 等其他 hook 管理器组合                     | 更新提交信息文件 |
 
 使用 `gerrit <command> --help` 查看完整选项。
 
