@@ -8,6 +8,7 @@ import {
   getWorkingTreeStatus,
   type RepositoryOverrides,
 } from "../core/repository.js";
+import { deriveProjectWebUrl } from "../core/remote.js";
 import { resolveRuntime } from "./shared.js";
 
 export const runStatus = async (
@@ -17,6 +18,7 @@ export const runStatus = async (
 ) => {
   const { config, repository } = await resolveRuntime(global, output, overrides);
   const base = repository.upstream;
+  const projectUrl = deriveProjectWebUrl(repository.remoteUrl, config.webUrl);
   const [changes, operation, hook, distance, commits] = await Promise.all([
     getWorkingTreeStatus(repository.root),
     getInProgressOperation(repository.root),
@@ -30,6 +32,7 @@ export const runStatus = async (
     upstream: repository.upstream ?? null,
     remote: repository.remote,
     remoteUrl: repository.remoteUrl,
+    projectUrl,
     targetBranch: repository.targetBranch,
     syncStrategy: repository.syncStrategy,
     clean: changes.length === 0,
@@ -55,6 +58,7 @@ export const runStatus = async (
     output.heading("Repository status");
     output.rows([
       { label: "Repository", value: data.repositoryRoot },
+      { label: "Project URL", value: data.projectUrl },
       { label: "Branch", value: data.branch },
       {
         label: "Upstream",

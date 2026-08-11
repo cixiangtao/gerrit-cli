@@ -43,8 +43,44 @@ export const parseGerritSshRemote = (remoteUrl: string): GerritSshRemote => {
 /** Derives a best-effort Gerrit browser URL from an SSH remote. */
 export const deriveWebUrl = (remoteUrl: string) => {
   if (remoteUrl.startsWith("https://") || remoteUrl.startsWith("http://")) {
-    return new URL(remoteUrl).origin;
+    const remote = new URL(remoteUrl);
+    const authenticatedPathIndex = remote.pathname.indexOf("/a/");
+    return authenticatedPathIndex < 0
+      ? remote.origin
+      : `${remote.origin}${remote.pathname.slice(0, authenticatedPathIndex)}`;
   }
   const { host } = parseGerritSshRemote(remoteUrl);
   return `https://${host}`;
+};
+
+const trimProjectSuffix = (project: string) => project.replace(/\.git$/, "");
+
+/** Extracts the Gerrit project name from an SSH, SCP-like, or HTTP Git remote. */
+export const deriveProjectName = (remoteUrl: string, webUrl?: string) => {
+  if (!remoteUrl.startsWith("https://") && !remoteUrl.startsWith("http://")) {
+    const project = parseGerritSshRemote(remoteUrl).project;
+    return trimProjectSuffix(
+      remoteUrl.startsWith("ssh://") ? decodeURIComponent(project) : project,
+    );
+  }
+
+  const remote = new URL(remoteUrl);
+  const base = new URL(webUrl ?? deriveWebUrl(remoteUrl));
+  let path = decodeURIComponent(remote.pathname).replace(/^\/+|\/+$/g, "");
+  const basePath = decodeURIComponent(base.pathname).replace(/^\/+|\/+$/g, "");
+
+  if (basePath && path.startsWith(`${basePath}/`)) {
+    path = path.slice(basePath.length + 1);
+  }
+  if (path.startsWith("a/")) path = path.slice(2);
+
+  return trimProjectSuffix(path);
+};
+
+/** Derives the Gerrit repository homepage from the Git remote and browser base URL. */
+export const deriveProjectWebUrl = (remoteUrl: string, webUrl?: string) => {
+  const base = (webUrl ?? deriveWebUrl(remoteUrl)).replace(/\/$/, "");
+  const project = deriveProjectName(remoteUrl, webUrl);
+  const encodedProject = project.split("/").map(encodeURIComponent).join("/");
+  return `${base}/admin/repos/${encodedProject}`;
 };

@@ -5,7 +5,7 @@ import { CliError } from "../core/errors.js";
 import type { Output } from "../core/output.js";
 import { formatCommand, runCommand } from "../core/process.js";
 import { getHeadChangeId, type RepositoryOverrides } from "../core/repository.js";
-import { deriveWebUrl } from "../core/remote.js";
+import { deriveProjectWebUrl } from "../core/remote.js";
 import { resolveRuntime } from "./shared.js";
 
 const browserCommand = (url: string) => {
@@ -21,15 +21,11 @@ export const runOpen = async (
   options: { dryRun: boolean; print: boolean },
 ) => {
   const { config, repository } = await resolveRuntime(global, output, overrides);
+  const url = deriveProjectWebUrl(repository.remoteUrl, config.webUrl);
   const changeId = await getHeadChangeId(repository.root);
-  if (!changeId) {
-    throw new CliError("MISSING_CHANGE_ID", "HEAD does not contain a Gerrit Change-Id.");
-  }
-  const webUrl = config.webUrl ?? deriveWebUrl(repository.remoteUrl);
-  const url = `${webUrl.replace(/\/$/, "")}/q/${changeId}`;
   const browser = browserCommand(url);
   const data = {
-    changeId,
+    changeId: changeId ?? null,
     url,
     dryRun: options.dryRun || options.print,
     command: formatCommand(browser.command, browser.args),
@@ -41,7 +37,7 @@ export const runOpen = async (
       allowFailure: true,
     });
     if (result.exitCode !== 0) {
-      throw new CliError("OPEN_FAILED", "Unable to open the Gerrit review in a browser.", {
+      throw new CliError("OPEN_FAILED", "Unable to open the Gerrit project in a browser.", {
         hints: [url, result.stderr].filter(Boolean),
       });
     }
@@ -49,12 +45,12 @@ export const runOpen = async (
 
   if (output.json) output.result("open", data);
   else {
-    output.heading("Gerrit review");
+    output.heading("Gerrit project");
     if (!options.print && !options.dryRun) {
-      output.note("Opened the Gerrit review in your browser.", "success");
+      output.note("Opened the Gerrit project in your browser.", "success");
       output.blank();
     }
-    output.rows([{ label: "Review", value: url }]);
+    output.rows([{ label: "Project", value: url }]);
   }
   return data;
 };
