@@ -77,7 +77,11 @@ export const createSynchronizableRepository = async () => {
   await git(seed, "config", "user.name", "Test User");
   await git(seed, "config", "user.email", "test@example.com");
   await writeFile(join(seed, "README.md"), "initial\n");
-  await git(seed, "add", "README.md");
+  await writeFile(
+    join(seed, ".gerrit-cli.json"),
+    `${JSON.stringify({ webUrl: "https://gerrit.example.com" }, null, 2)}\n`,
+  );
+  await git(seed, "add", "README.md", ".gerrit-cli.json");
   await git(seed, "commit", "-m", "chore: initial");
   await git(seed, "remote", "add", "origin", remote);
   await git(seed, "push", "-u", "origin", "main");

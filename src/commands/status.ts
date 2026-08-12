@@ -16,7 +16,7 @@ export const runStatus = async (
   output: Output,
   overrides: RepositoryOverrides,
 ) => {
-  const { config, repository } = await resolveRuntime(global, output, overrides);
+  const { config, repository, gerrit } = await resolveRuntime(global, output, overrides);
   const base = repository.upstream;
   const projectUrl = deriveProjectWebUrl(repository.remoteUrl, config.webUrl);
   const [changes, operation, hook, distance, commits] = await Promise.all([
@@ -32,6 +32,7 @@ export const runStatus = async (
     upstream: repository.upstream ?? null,
     remote: repository.remote,
     remoteUrl: repository.remoteUrl,
+    gerrit,
     projectUrl,
     targetBranch: repository.targetBranch,
     syncStrategy: repository.syncStrategy,
@@ -58,6 +59,7 @@ export const runStatus = async (
     output.heading("Repository status");
     output.rows([
       { label: "Repository", value: data.repositoryRoot },
+      { label: "Gerrit", value: `detected (${data.gerrit.evidence})` },
       { label: "Project URL", value: data.projectUrl },
       { label: "Branch", value: data.branch },
       {

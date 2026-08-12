@@ -14,11 +14,13 @@ import {
   type RepositoryContext,
   type RepositoryOverrides,
 } from "../core/repository.js";
+import { assertGerritRemote, type GerritRemoteDetection } from "../core/remote.js";
 
 export interface RuntimeContext {
   global: GlobalOptions;
   config: EffectiveConfig;
   repository: RepositoryContext;
+  gerrit: GerritRemoteDetection;
   output: Output;
 }
 
@@ -30,7 +32,8 @@ export const resolveRuntime = async (
   const root = await getRepositoryRoot(global.cwd);
   const config = await loadConfig(root);
   const repository = await resolveRepositoryContext(root, config, overrides);
-  return { global, config, repository, output };
+  const gerrit = assertGerritRemote(repository.remoteUrl, config.webUrl);
+  return { global, config, repository, gerrit, output };
 };
 
 export interface SyncResult {

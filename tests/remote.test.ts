@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  assertGerritRemote,
+  detectGerritRemote,
   deriveProjectName,
   deriveProjectWebUrl,
   deriveWebUrl,
@@ -52,6 +54,26 @@ describe("Gerrit SSH remote", () => {
     );
     expect(deriveProjectWebUrl("https://gerrit.example.com/gerrit/a/team/app.git")).toBe(
       "https://gerrit.example.com/gerrit/admin/repos/team/app",
+    );
+  });
+
+  it("detects an explicit Gerrit SSH port or configured web URL", () => {
+    expect(detectGerritRemote("ssh://alice@gerrit.example.com:29418/team/app")).toEqual({
+      detected: true,
+      evidence: "ssh-port",
+    });
+    expect(
+      detectGerritRemote("alice@gerrit.example.com:team/app", "https://gerrit.example.com"),
+    ).toEqual({ detected: true, evidence: "configured-web-url" });
+  });
+
+  it("rejects ordinary Git remotes without Gerrit-specific evidence", () => {
+    expect(detectGerritRemote("https://github.com/example/project.git")).toBeUndefined();
+    expect(detectGerritRemote("https://github.com/a/project.git")).toBeUndefined();
+    expect(detectGerritRemote("https://gerrit.example.com/a/team/app")).toBeUndefined();
+    expect(detectGerritRemote("git@github.com:example/project.git")).toBeUndefined();
+    expect(() => assertGerritRemote("ssh://git@github.com:22/example/project.git")).toThrowError(
+      expect.objectContaining({ code: "NOT_A_GERRIT_REPOSITORY" }),
     );
   });
 });

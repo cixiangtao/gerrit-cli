@@ -68,12 +68,41 @@ describe("CLI", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("◆ Repository status");
     expect(result.stdout).toContain("Repository  ");
+    expect(result.stdout).toMatch(/Gerrit\s+detected \(ssh-port\)/);
     expect(result.stdout).toContain(
       "Project URL  https://gerrit.example.com/admin/repos/example/project",
     );
     expect(result.stdout).toContain("✓ Worktree");
     expect(result.stdout).toContain("! Change-Id");
     expect(result.stdout).toContain("↑ 0 ahead  ↓ 0 behind");
+  });
+
+  it.each([
+    ["status", ["status"]],
+    ["open", ["open", "--print"]],
+    ["setup", ["setup", "--dry-run"]],
+    ["sync", ["sync", "--dry-run"]],
+    ["review", ["review", "--dry-run"]],
+    ["amend", ["amend", "--dry-run"]],
+    ["merge", ["merge", "main", "--dry-run", "--no-fetch"]],
+  ])("rejects %s before running in a repository without Gerrit evidence", async (_name, args) => {
+    const root = await createRepository();
+    await git(root, "remote", "set-url", "origin", "https://github.com/example/project.git");
+    const result = await run(
+      process.execPath,
+      [cliPath, "--json", "-C", root, ...args],
+      projectRoot,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      error: {
+        code: "NOT_A_GERRIT_REPOSITORY",
+        message: "The configured remote is not identifiable as Gerrit.",
+        hints: expect.arrayContaining(["Remote: https://github.com/example/project.git"]),
+      },
+    });
   });
 
   it("prints the current Gerrit project homepage without requiring a HEAD Change-Id", async () => {
@@ -108,7 +137,39 @@ describe("CLI", () => {
     expect(result.stdout).toContain("◆ Diagnostics");
     expect(result.stdout).toContain("– SSH");
     expect(result.stdout).toContain("skipped (--offline)");
-    expect(result.stdout).toContain("3 passed · 1 skipped · 1 failed");
+    expect(result.stdout).toContain("4 passed · 1 skipped · 1 failed");
+  });
+
+  it("reports Gerrit detection as a doctor check instead of exiting before diagnostics", async () => {
+    const root = await createRepository();
+    await git(root, "remote", "set-url", "origin", "https://github.com/example/project.git");
+    const result = await run(
+      process.execPath,
+      [cliPath, "--json", "-C", root, "doctor", "--offline"],
+      projectRoot,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: true,
+      command: "doctor",
+      data: {
+        healthy: false,
+        checks: expect.arrayContaining([
+          {
+            name: "gerrit",
+            ok: false,
+            message: "not identified from local configuration",
+          },
+          {
+            name: "ssh",
+            ok: true,
+            skipped: true,
+            message: "skipped (not identified as Gerrit)",
+          },
+        ]),
+      },
+    });
   });
 
   it("makes review dry-run safety and the resulting command visually explicit", async () => {

@@ -41,13 +41,6 @@ describe("amend command", () => {
 
   it("preserves the Change-Id and uploads a new Patch Set by default", async () => {
     const { local, remote } = await createSynchronizableRepository();
-    await writeFile(
-      join(local, ".gerrit-cli.json"),
-      `${JSON.stringify({ webUrl: "https://gerrit.example.com" }, null, 2)}\n`,
-    );
-    await git(local, "add", ".gerrit-cli.json");
-    await git(local, "commit", "-m", "test: configure Gerrit web URL");
-    await git(local, "push", "origin", "main");
     await addReviewCommit(local);
     const before = await git(local, "rev-parse", "HEAD");
     await writeFile(join(local, "feature.txt"), "updated\n");
