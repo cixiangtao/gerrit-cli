@@ -129,6 +129,12 @@ gerrit review zhangsan,lisi
 作为诊断项，并可继续验证真实 SSH 连通性；`hook run` 只执行已经安装的 Gerrit hook，不检查
 remote。
 
+`gerrit setup` 会尊重 `core.hooksPath`。当 Husky 或其他管理器已经占用当前生效的
+`commit-msg` hook 时，setup 会保留原有命令，并幂等地追加一段由 CLI 管理的官方 Gerrit hook
+桥接。桥接会在提交时解析 Git common directory，因此兼容 linked worktree，也不依赖全局安装的
+`gerrit` 命令。对于当前 Husky 布局，setup 会修改项目维护的 `.husky/commit-msg`，不会改动由
+Husky 生成的 `.husky/_` dispatcher。
+
 ## 更新现有 Change
 
 修改代码后只暂存本次 Patch Set 应包含的文件，再运行 `gerrit amend`：

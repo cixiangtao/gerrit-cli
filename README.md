@@ -41,6 +41,13 @@ SSH ports, and SCP-like remotes. `doctor` reports this as a diagnostic and can v
 connectivity; `hook run` only executes an already installed Gerrit hook and does not inspect the
 remote.
 
+`gerrit setup` respects `core.hooksPath`. When Husky or another manager already owns the active
+`commit-msg` hook, setup preserves its commands and appends an idempotent managed bridge to the
+official Gerrit hook. The bridge resolves Git's common directory at commit time, so it also works in
+linked worktrees and does not require a globally installed `gerrit` command. For current Husky
+layouts, setup updates the project-owned `.husky/commit-msg` file rather than the generated
+`.husky/_` dispatcher.
+
 The CLI defaults to previews, explicit synchronization strategies, and interactive confirmation
 before a live merge or review push. Run `gerrit merge` in a terminal to refresh the remote and choose
 the source branch. Remote refresh is the default; pass `--no-fetch` to use existing refs. Merge

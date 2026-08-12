@@ -1,6 +1,6 @@
 import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 import { CliError } from "./errors.js";
 import { formatCommand, runCommand } from "./process.js";
@@ -8,11 +8,32 @@ import { getActiveHooksDirectory, getGitCommonDirectory, readHook } from "./repo
 import { parseGerritSshRemote } from "./remote.js";
 
 const GERRIT_HOOK_MARKER = "Change-Id";
+const BRIDGE_START_MARKER = "# gerrit-cli:start";
+const BRIDGE_END_MARKER = "# gerrit-cli:end";
+const createBridge = (exec = false) =>
+  `${BRIDGE_START_MARKER}\nhook="$(git rev-parse --git-common-dir)/hooks/commit-msg"\n${exec ? "exec " : ""}"$hook" "$1"\n${BRIDGE_END_MARKER}\n`;
+
+/** Resolves the project-owned hook behind Husky's generated dispatch directory when present. */
+const resolveActiveHookPath = async (activeHooksDirectory: string) => {
+  const dispatcherPath = join(activeHooksDirectory, "commit-msg");
+  if (basename(activeHooksDirectory) !== "_") return dispatcherPath;
+
+  const [dispatcherContent, runtimeContent] = await Promise.all([
+    readHook(dispatcherPath),
+    readHook(join(activeHooksDirectory, "h")),
+  ]);
+  const isHuskyDispatcher = Boolean(
+    dispatcherContent?.includes('/h"') && runtimeContent?.includes("HUSKY"),
+  );
+  return isHuskyDispatcher ? join(dirname(activeHooksDirectory), "commit-msg") : dispatcherPath;
+};
 
 export interface HookStatus {
   installedPath: string;
   activePath: string;
   installed: boolean;
+  /** Whether the project-owned active hook file already exists. */
+  activeExists: boolean;
   active: boolean;
   bridged: boolean;
   ready: boolean;
@@ -42,7 +63,7 @@ export const inspectHook = async (root: string): Promise<HookStatus> => {
     getActiveHooksDirectory(root),
   ]);
   const installedPath = join(commonDirectory, "hooks", "commit-msg");
-  const activePath = join(activeHooksDirectory, "commit-msg");
+  const activePath = await resolveActiveHookPath(activeHooksDirectory);
   const [
     installedContent,
     activeContent,
@@ -67,12 +88,14 @@ export const inspectHook = async (root: string): Promise<HookStatus> => {
   const bridged = Boolean(
     samePath || (activeContent && bridgeMarkers.some((marker) => activeContent.includes(marker))),
   );
+  const activeExists = activeContent !== undefined;
   const active = Boolean(activeContent && activeExecutable);
 
   return {
     installedPath,
     activePath,
     installed,
+    activeExists,
     active,
     bridged,
     ready: installed && active && bridged,
@@ -86,7 +109,7 @@ const assertGerritHook = async (path: string) => {
   }
 };
 
-/** Downloads the official hook and creates an active wrapper only when no hook exists. */
+/** Downloads the official hook and safely composes it with Git's active hook. */
 export const installHook = async (
   root: string,
   remoteUrl: string,
@@ -105,12 +128,16 @@ export const installHook = async (
   ];
 
   if (options.dryRun) {
+    const wouldCreateActiveWrapper =
+      !before.activeExists && before.activePath !== before.installedPath;
     return {
       dryRun: true,
       command: wouldDownload ? formatCommand("scp", scpArgs) : null,
       wouldDownload,
       hook: before,
-      wouldCreateActiveWrapper: !before.active && before.activePath !== before.installedPath,
+      wouldCreateActiveWrapper,
+      wouldComposeActiveHook:
+        before.activePath !== before.installedPath && before.activeExists && !before.bridged,
     };
   }
 
@@ -152,17 +179,26 @@ export const installHook = async (
   }
 
   const afterInstall = await inspectHook(root);
-  if (!afterInstall.active && afterInstall.activePath !== afterInstall.installedPath) {
+  if (afterInstall.activePath !== afterInstall.installedPath) {
     await mkdir(dirname(afterInstall.activePath), { recursive: true });
-    const wrapper = `#!/bin/sh\nhook="$(git rev-parse --git-common-dir)/hooks/commit-msg"\nexec "$hook" "$1"\n`;
-    await writeFile(afterInstall.activePath, wrapper, { mode: 0o755 });
+    const activeContent = await readHook(afterInstall.activePath);
+    if (!afterInstall.bridged) {
+      const separator = activeContent?.endsWith("\n") ? "\n" : "\n\n";
+      const nextContent = activeContent
+        ? `${activeContent}${separator}${createBridge()}`
+        : `#!/bin/sh\n${createBridge(true)}`;
+      await writeFile(afterInstall.activePath, nextContent, { mode: 0o755 });
+    }
+    if (activeContent !== undefined || !afterInstall.bridged) {
+      await chmod(afterInstall.activePath, 0o755);
+    }
   }
 
   return {
     dryRun: false,
     command: formatCommand("scp", scpArgs),
     hook: await inspectHook(root),
-    adapter: `gerrit hook run "$1"`,
+    adapter: createBridge().trim(),
   };
 };
 
