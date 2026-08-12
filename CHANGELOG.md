@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/cixiangtao/gerrit-cli/compare/v1.0.1...v1.0.2) (2026-08-12)
+
+
+### Bug Fixes
+
+* **cli:** validate Gerrit repositories before commands ([#20](https://github.com/cixiangtao/gerrit-cli/issues/20)) ([d82a513](https://github.com/cixiangtao/gerrit-cli/commit/d82a513234d7b0b333ff9d858f2d098e39ddd585))
+
 ## [1.0.1](https://github.com/cixiangtao/gerrit-cli/compare/v1.0.0...v1.0.1) (2026-08-11)
 
 
