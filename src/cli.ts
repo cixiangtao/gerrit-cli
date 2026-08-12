@@ -125,7 +125,7 @@ addRepositoryOptions(
 addRepositoryOptions(
   program
     .command("setup")
-    .description("Install and verify the official Gerrit Change-Id hook")
+    .description("Install and compose the official Gerrit Change-Id hook")
     .option("--dry-run", "Show hook changes without downloading or writing", false)
     .option("--refresh", "Redownload an existing Gerrit hook", false),
 ).action(

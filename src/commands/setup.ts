@@ -34,7 +34,12 @@ export const runSetup = async (
     ]);
     if (!data.hook.ready) {
       output.blank();
-      output.note('Add this line to the active commit-msg hook: gerrit hook run "$1"', "warning");
+      output.note(
+        options.dryRun
+          ? "The active commit-msg hook will be preserved and composed automatically."
+          : "The active commit-msg hook could not be composed automatically.",
+        "warning",
+      );
     }
   }
   if (!options.dryRun && !data.hook.ready) process.exitCode = 1;

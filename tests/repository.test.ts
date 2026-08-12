@@ -1,17 +1,17 @@
-import { chmod, mkdir, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import { loadConfig } from "../src/core/config.js";
-import { inspectHook } from "../src/core/hooks.js";
+import { inspectHook, installHook } from "../src/core/hooks.js";
 import {
   getAheadBehind,
   getOutgoingCommits,
   getRemoteBranchesContainingCommit,
   resolveRepositoryContext,
 } from "../src/core/repository.js";
-import { addReviewCommit, createRepository, git } from "./helpers.js";
+import { addReviewCommit, createRepository, git, run } from "./helpers.js";
 
 describe("repository inspection", () => {
   it("loads repository configuration from .gerrit-cli.json", async () => {
@@ -71,6 +71,97 @@ describe("repository inspection", () => {
     await git(root, "config", "core.hooksPath", ".husky");
 
     await expect(inspectHook(root)).resolves.toMatchObject({
+      installed: true,
+      active: true,
+      bridged: true,
+      ready: true,
+    });
+  });
+
+  it("composes an existing Husky hook without replacing its commands", async () => {
+    const root = await createRepository();
+    const storedHook = join(root, ".git", "hooks", "commit-msg");
+    const activeHook = join(root, ".husky", "commit-msg");
+    const messageFile = join(root, "COMMIT_EDITMSG");
+    const existingContent = `#!/bin/sh\nprintf 'existing\\n' >> "$1"\n`;
+    await mkdir(join(root, ".husky"), { recursive: true });
+    await writeFile(storedHook, `#!/bin/sh\n# Gerrit Change-Id\nprintf 'gerrit\\n' >> "$1"\n`);
+    await writeFile(activeHook, existingContent);
+    await writeFile(messageFile, "message\n");
+    await chmod(storedHook, 0o755);
+    await git(root, "config", "core.hooksPath", ".husky");
+
+    await installHook(root, "ssh://test@gerrit.example.com:29418/example/project", {
+      dryRun: false,
+      refresh: false,
+    });
+    const firstInstall = await readFile(activeHook, "utf8");
+    await installHook(root, "ssh://test@gerrit.example.com:29418/example/project", {
+      dryRun: false,
+      refresh: false,
+    });
+
+    expect(firstInstall).toContain(existingContent);
+    expect(firstInstall).toContain("# gerrit-cli:start");
+    expect(firstInstall).toContain("git rev-parse --git-common-dir");
+    expect(await readFile(activeHook, "utf8")).toBe(firstInstall);
+    expect((await stat(activeHook)).mode & 0o111).not.toBe(0);
+    await expect(run(activeHook, [messageFile], root)).resolves.toMatchObject({ exitCode: 0 });
+    await expect(readFile(messageFile, "utf8")).resolves.toBe("message\nexisting\ngerrit\n");
+    await expect(inspectHook(root)).resolves.toMatchObject({
+      installed: true,
+      active: true,
+      bridged: true,
+      ready: true,
+    });
+  });
+
+  it("previews automatic composition of an existing active hook", async () => {
+    const root = await createRepository();
+    const activeHook = join(root, ".husky", "commit-msg");
+    await mkdir(join(root, ".husky"), { recursive: true });
+    await writeFile(activeHook, '#!/bin/sh\npnpm exec commitlint --edit "$1"\n', { mode: 0o755 });
+    await git(root, "config", "core.hooksPath", ".husky");
+
+    await expect(
+      installHook(root, "ssh://test@gerrit.example.com:29418/example/project", {
+        dryRun: true,
+        refresh: false,
+      }),
+    ).resolves.toMatchObject({
+      dryRun: true,
+      wouldDownload: true,
+      wouldCreateActiveWrapper: false,
+      wouldComposeActiveHook: true,
+    });
+    expect(await readFile(activeHook, "utf8")).not.toContain("gerrit-cli:start");
+  });
+
+  it("composes the project hook instead of Husky's generated dispatcher", async () => {
+    const root = await createRepository();
+    const storedHook = join(root, ".git", "hooks", "commit-msg");
+    const dispatcherHook = join(root, ".husky", "_", "commit-msg");
+    const runtimeHook = join(root, ".husky", "_", "h");
+    const projectHook = join(root, ".husky", "commit-msg");
+    const dispatcherContent = '#!/usr/bin/env sh\n. "$(dirname "$0")/h"\n';
+    const projectContent = 'pnpm exec commitlint --edit "$1"\n';
+    await mkdir(join(root, ".husky", "_"), { recursive: true });
+    await writeFile(storedHook, "#!/bin/sh\n# Gerrit Change-Id\n", { mode: 0o755 });
+    await writeFile(dispatcherHook, dispatcherContent, { mode: 0o755 });
+    await writeFile(runtimeHook, '#!/usr/bin/env sh\n[ "${HUSKY-}" = "0" ] && exit 0\n');
+    await writeFile(projectHook, projectContent);
+    await git(root, "config", "core.hooksPath", ".husky/_");
+
+    await installHook(root, "ssh://test@gerrit.example.com:29418/example/project", {
+      dryRun: false,
+      refresh: false,
+    });
+
+    expect(await readFile(dispatcherHook, "utf8")).toBe(dispatcherContent);
+    expect(await readFile(projectHook, "utf8")).toContain(projectContent);
+    expect(await readFile(projectHook, "utf8")).toContain("# gerrit-cli:start");
+    await expect(inspectHook(root)).resolves.toMatchObject({
+      activePath: projectHook,
       installed: true,
       active: true,
       bridged: true,
