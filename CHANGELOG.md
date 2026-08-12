@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/cixiangtao/gerrit-cli/compare/v1.1.0...v1.2.0) (2026-08-12)
+
+
+### Features
+
+* **hooks:** compose Gerrit hooks automatically ([#24](https://github.com/cixiangtao/gerrit-cli/issues/24)) ([2016265](https://github.com/cixiangtao/gerrit-cli/commit/201626597c3057eaef9be45bceb263b8f4785a04))
+
 ## [1.1.0](https://github.com/cixiangtao/gerrit-cli/compare/v1.0.2...v1.1.0) (2026-08-12)
 
 
