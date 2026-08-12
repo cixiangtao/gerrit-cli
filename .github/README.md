@@ -35,7 +35,8 @@ This CLI keeps those decisions visible:
 
 ## Requirements
 
-- Node.js 22.14 or newer
+- Node.js 14.17 or newer (Node.js 14 and 16 are legacy compatibility targets; prefer a maintained
+  release when the host project allows it)
 - Git
 - SSH access to the target Gerrit server for live connectivity, hook download, and review pushes
 

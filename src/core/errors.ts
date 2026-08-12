@@ -3,17 +3,19 @@ export class CliError extends Error {
   readonly code: string;
   readonly hints: string[];
   readonly exitCode: number;
+  readonly cause?: unknown;
 
   constructor(
     code: string,
     message: string,
     options: { hints?: string[]; exitCode?: number; cause?: unknown } = {},
   ) {
-    super(message, { cause: options.cause });
+    super(message);
     this.name = "CliError";
     this.code = code;
     this.hints = options.hints ?? [];
     this.exitCode = options.exitCode ?? 1;
+    if (options.cause !== undefined) this.cause = options.cause;
   }
 }
 

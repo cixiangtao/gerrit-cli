@@ -44,8 +44,8 @@ jobs:
       - name: Run quality checks
         run: pnpm check
 
-  package:
-    name: Package and consumer contract
+  artifact:
+    name: Build package artifact
     needs: quality
     runs-on: ubuntu-latest
     steps:
@@ -65,8 +65,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Audit production dependencies
         run: pnpm audit:prod
-      - name: Verify the npm package
-        run: pnpm verify:package
+      - name: Verify and pack the npm package
+        run: |
+          pnpm build
+          node scripts/verify-package.mjs --output artifacts
       - name: Verify the release contract script
         env:
           GITHUB_REPOSITORY: cixiangtao/gerrit-cli
@@ -74,3 +76,55 @@ jobs:
         run: |
           export RELEASE_VERSION="$(node --input-type=module --eval 'import manifest from "./package.json" with { type: "json" }; console.log(manifest.version)')"
           node scripts/verify-release.mjs
+      - name: Upload the verified package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gerrit-cli-ci-${{ github.sha }}
+          path: artifacts/*.tgz
+          if-no-files-found: error
+
+  runtime:
+    name: Runtime compatibility (Node ${{ matrix.node-version }})
+    needs: artifact
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - 14.17.0
+          - 16.20.2
+          - 18.20.8
+          - 20
+          - 22
+          - 24
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          package-manager-cache: false
+      - name: Download the verified package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: gerrit-cli-ci-${{ github.sha }}
+          path: artifacts
+      - name: Verify the installed CLI runtime
+        run: |
+          archive="$(find "$PWD/artifacts" -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          test -n "$archive"
+          node scripts/verify-runtime.mjs "$archive"
+
+  package:
+    name: Package and consumer contract
+    needs:
+      - artifact
+      - runtime
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require artifact and runtime verification
+        run: |
+          test "${{ needs.artifact.result }}" = "success"
+          test "${{ needs.runtime.result }}" = "success"

@@ -1,4 +1,4 @@
-import { cancel, intro, isCancel, select, type Option } from "@clack/prompts";
+import { cancel, intro, isCancel, select } from "@clack/prompts";
 
 const INTERACTIVE_COMMANDS = [
   "status",
@@ -13,6 +13,12 @@ const INTERACTIVE_COMMANDS = [
 ] as const;
 
 export type InteractiveCommand = (typeof INTERACTIVE_COMMANDS)[number];
+
+interface CommandMenuOption {
+  value: InteractiveCommand;
+  label: string;
+  hint: string;
+}
 
 export const COMMAND_MENU_OPTIONS = [
   {
@@ -60,7 +66,7 @@ export const COMMAND_MENU_OPTIONS = [
     label: "help",
     hint: "Show every command and option · read-only",
   },
-] satisfies Option<InteractiveCommand>[];
+] satisfies CommandMenuOption[];
 
 interface InteractiveContext {
   stdinIsTTY?: boolean;
