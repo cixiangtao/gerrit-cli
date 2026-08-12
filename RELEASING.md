@@ -8,19 +8,19 @@ public version manually.
 
 ## Release contract
 
-| Concern        | Decision                                                                                           |
-| -------------- | -------------------------------------------------------------------------------------------------- |
-| Version owner  | Root `package.json`; Release Please synchronizes `.release-please-manifest.json`                   |
-| Version policy | Stable Semantic Versioning; versions below `1.0.0` may change public contracts                     |
-| Release source | The exact merge commit of an automated release PR into protected `main`                            |
-| Gate           | Required PR checks, release-only file allowlist, `pnpm release:check`, and package consumer checks |
-| Notes          | Release Please-managed `CHANGELOG.md` plus GitHub-generated release notes                          |
-| Git            | Actions creates annotated `v<version>` tags at the accepted release merge                          |
-| Authority      | `.github/workflows/release.yml`; generic pushes cannot publish, and recovery re-proves the same PR |
-| Delivery       | Public npm package and GitHub Release                                                              |
-| Credentials    | GitHub App for release PRs; npm trusted publishing with GitHub Actions OIDC                        |
-| Prereleases    | Not supported by the current workflow                                                              |
-| Recovery       | Retry only after checking the PR merge, tag, npm integrity, provenance, and GitHub Release         |
+| Concern        | Decision                                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Version owner  | Root `package.json`; Release Please synchronizes `.release-please-manifest.json`                                 |
+| Version policy | Stable Semantic Versioning; versions below `1.0.0` may change public contracts                                   |
+| Release source | The exact merge commit of an automated release PR into protected `main`                                          |
+| Gate           | Required PR checks, release-only file allowlist, `pnpm release:check`, and Node 14.17-24 package consumer checks |
+| Notes          | Release Please-managed `CHANGELOG.md` plus GitHub-generated release notes                                        |
+| Git            | Actions creates annotated `v<version>` tags at the accepted release merge                                        |
+| Authority      | `.github/workflows/release.yml`; generic pushes cannot publish, and recovery re-proves the same PR               |
+| Delivery       | Public npm package and GitHub Release                                                                            |
+| Credentials    | GitHub App for release PRs; npm trusted publishing with GitHub Actions OIDC                                      |
+| Prereleases    | Not supported by the current workflow                                                                            |
+| Recovery       | Retry only after checking the PR merge, tag, npm integrity, provenance, and GitHub Release                       |
 
 ## Normal flow
 
@@ -33,8 +33,8 @@ public version manually.
 3. Review the release-only diff, proposed version, `CHANGELOG.md`, checks, and approval, then manually
    merge that release PR when the version should be published.
 4. The Release workflow revalidates that exact merge, packs and verifies one immutable artifact,
-   creates `vX.Y.Z`, publishes through npm trusted publishing, and creates the matching GitHub
-   Release.
+   runs it on every supported Node.js release line from 14.17 through 24, creates `vX.Y.Z`, publishes
+   through npm trusted publishing, and creates the matching GitHub Release.
 5. Verify the tag target, GitHub Release, npm version and `latest`, provenance, public tarball, and a
    fresh `npx @anys/gerrit-cli@<version> --version` invocation.
 
@@ -70,8 +70,9 @@ PR。本地命令不发布 npm、不创建发布 Tag，也不手动修改公开�
 2. Release Please 根据 Conventional Commit 或 squash merge 标题维护唯一的发布 PR，并自动更新
    版本号和 `CHANGELOG.md`。
 3. 确认版本、发布记录、检查和审批后，由维护者手动合并该发布 PR；这次合并就是正式发版开关。
-4. Release 工作流验证该发布 PR 的准确身份和文件边界，然后打包一次、创建 `vX.Y.Z`、通过 npm
-   Trusted Publishing 发布，并创建对应 GitHub Release。
+4. Release 工作流验证该发布 PR 的准确身份和文件边界，然后打包一次，并在 Node.js 14.17 至 24
+   的全部支持版本线上验证同一产物，再创建 `vX.Y.Z`、通过 npm Trusted Publishing 发布，并创建
+   对应 GitHub Release。
 5. 最后独立核对 Tag 指向、GitHub Release、npm 版本与 `latest`、provenance、公开包完整性和全新
    `npx` 调用。
 

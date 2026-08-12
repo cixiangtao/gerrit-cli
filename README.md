@@ -21,7 +21,8 @@ Or add it to a project:
 pnpm add -D @anys/gerrit-cli
 ```
 
-The CLI requires Node.js 22.14 or newer.
+The CLI supports Node.js 14.17 or newer. Node.js 14 and 16 are legacy compatibility targets;
+use a maintained Node.js release when the host project allows it.
 
 ## Quick example
 

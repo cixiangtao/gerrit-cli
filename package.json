@@ -52,10 +52,10 @@
     "verify:package": "pnpm build && node scripts/verify-package.mjs"
   },
   "dependencies": {
-    "@clack/prompts": "0.11.0",
-    "commander": "^15.0.0",
+    "@clack/prompts": "0.8.2",
+    "commander": "^10.0.1",
     "picocolors": "^1.1.1",
-    "string-width": "^8.2.2"
+    "string-width": "^5.1.2"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
@@ -66,7 +66,7 @@
     "vitest": "^4.0.18"
   },
   "engines": {
-    "node": ">=22.14.0"
+    "node": ">=14.17.0"
   },
   "packageManager": "pnpm@10.34.5"
 }

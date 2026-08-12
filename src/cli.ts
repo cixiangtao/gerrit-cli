@@ -90,12 +90,6 @@ const program = new Command()
   .option("--json", "Emit a stable JSON envelope", false)
   .exitOverride()
   .showHelpAfterError()
-  .configureHelp({
-    styleTitle: (value) => helpColors.bold(helpColors.magenta(value)),
-    styleUsage: (value) => helpColors.bold(value),
-    styleCommandText: (value) => helpColors.cyan(value),
-    styleOptionText: (value) => helpColors.cyan(value),
-  })
   .addHelpText(
     "beforeAll",
     `${helpColors.magenta("◆")} ${helpColors.bold(`Gerrit CLI v${VERSION}`)}\n`,

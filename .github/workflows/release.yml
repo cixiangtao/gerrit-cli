@@ -159,11 +159,51 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
 
+  runtime:
+    name: Runtime compatibility (Node ${{ matrix.node-version }})
+    needs:
+      - gate
+      - build
+    if: needs.gate.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - 14.17.0
+          - 16.20.2
+          - 18.20.8
+          - 20
+          - 22
+          - 24
+    steps:
+      - name: Check out the release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.gate.outputs.release_sha }}
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          package-manager-cache: false
+      - name: Download the verified artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: gerrit-cli-npm-${{ needs.gate.outputs.version }}
+          path: artifacts
+      - name: Verify the installed CLI runtime
+        run: |
+          archive="$(find "$PWD/artifacts" -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          test -n "$archive"
+          node scripts/verify-runtime.mjs "$archive"
+
   publish:
     name: Tag and publish npm package
     needs:
       - gate
       - build
+      - runtime
     if: needs.gate.outputs.release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15

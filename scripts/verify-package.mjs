@@ -133,7 +133,7 @@ try {
   if (installedManifest.bin?.gerrit !== "dist/cli.js") {
     fail("installed binary mapping is invalid.");
   }
-  if (installedManifest.engines?.node !== ">=22.14.0") {
+  if (installedManifest.engines?.node !== ">=14.17.0") {
     fail("installed Node.js requirement is invalid.");
   }
 
