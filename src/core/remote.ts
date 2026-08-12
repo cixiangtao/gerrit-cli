@@ -7,6 +7,13 @@ export interface GerritSshRemote {
   project: string;
 }
 
+export type GerritRemoteEvidence = "ssh-port" | "configured-web-url";
+
+export interface GerritRemoteDetection {
+  detected: true;
+  evidence: GerritRemoteEvidence;
+}
+
 /** Parses standard SSH and SCP-like Git remote URLs used by Gerrit. */
 export const parseGerritSshRemote = (remoteUrl: string): GerritSshRemote => {
   if (remoteUrl.startsWith("ssh://")) {
@@ -83,4 +90,38 @@ export const deriveProjectWebUrl = (remoteUrl: string, webUrl?: string) => {
   const project = deriveProjectName(remoteUrl, webUrl);
   const encodedProject = project.split("/").map(encodeURIComponent).join("/");
   return `${base}/admin/repos/${encodedProject}`;
+};
+
+/** Detects Gerrit-specific local configuration without making a network request. */
+export const detectGerritRemote = (
+  remoteUrl: string,
+  webUrl?: string,
+): GerritRemoteDetection | undefined => {
+  if (webUrl) return { detected: true, evidence: "configured-web-url" };
+
+  if (remoteUrl.startsWith("ssh://")) {
+    const remote = new URL(remoteUrl);
+    if (remote.port === "29418") return { detected: true, evidence: "ssh-port" };
+    return undefined;
+  }
+
+  return undefined;
+};
+
+/** Rejects remotes that do not contain enough local evidence to identify Gerrit. */
+export const assertGerritRemote = (remoteUrl: string, webUrl?: string) => {
+  const detection = detectGerritRemote(remoteUrl, webUrl);
+  if (detection) return detection;
+
+  throw new CliError(
+    "NOT_A_GERRIT_REPOSITORY",
+    "The configured remote is not identifiable as Gerrit.",
+    {
+      hints: [
+        `Remote: ${remoteUrl}`,
+        "Use an explicit Gerrit SSH URL with port 29418 or configure webUrl for HTTPS, custom SSH ports, and SCP-like remotes.",
+        "Run gerrit doctor to verify live Gerrit SSH connectivity.",
+      ],
+    },
+  );
 };

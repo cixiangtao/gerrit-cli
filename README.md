@@ -34,6 +34,12 @@ gerrit merge feature/login --dry-run
 gerrit review alice,bob --dry-run
 ```
 
+Repository commands reject ordinary Git remotes before planning or changing anything. The shared
+offline gate recognizes an explicit Gerrit SSH port (`29418`); configure `webUrl` for HTTPS, custom
+SSH ports, and SCP-like remotes. `doctor` reports this as a diagnostic and can verify live SSH
+connectivity; `hook run` only executes an already installed Gerrit hook and does not inspect the
+remote.
+
 The CLI defaults to previews, explicit synchronization strategies, and interactive confirmation
 before a live merge or review push. Run `gerrit merge` in a terminal to refresh the remote and choose
 the source branch. Remote refresh is the default; pass `--no-fetch` to use existing refs. Merge
