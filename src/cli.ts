@@ -17,6 +17,7 @@ import { runStatus } from "./commands/status.js";
 import { runSync } from "./commands/sync.js";
 import { CliError, toCliError } from "./core/errors.js";
 import { createOutput } from "./core/output.js";
+import { checkForUpdate, formatUpdateNotice } from "./core/version.js";
 import { resolveRootArguments } from "./interactive.js";
 import type { GlobalOptions, SyncStrategy } from "./types.js";
 
@@ -248,6 +249,7 @@ hook
   });
 
 let activeArgv = process.argv;
+const updateCheck = checkForUpdate(VERSION);
 
 try {
   const rootArguments = await resolveRootArguments(process.argv.slice(2), {
@@ -277,4 +279,7 @@ try {
     );
     process.exitCode = 1;
   }
+} finally {
+  const update = await updateCheck;
+  if (update) createOutput(activeArgv.includes("--json")).warn(formatUpdateNotice(update));
 }

@@ -7,8 +7,18 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const CHANGE_ID = "I0123456789abcdef0123456789abcdef01234567";
 
-export const run = async (command: string, args: string[], cwd: string) => {
-  const environment: NodeJS.ProcessEnv = { ...process.env, NO_COLOR: "1" };
+export const run = async (
+  command: string,
+  args: string[],
+  cwd: string,
+  environmentOverrides: NodeJS.ProcessEnv = {},
+) => {
+  const environment: NodeJS.ProcessEnv = {
+    ...process.env,
+    NO_COLOR: "1",
+    npm_config_registry: "http://127.0.0.1:9/",
+    ...environmentOverrides,
+  };
   delete environment.FORCE_COLOR;
 
   try {

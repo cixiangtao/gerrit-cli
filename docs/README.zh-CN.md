@@ -76,10 +76,13 @@ npx @anys/gerrit-cli
 人类可读输出会把检查、摘要和命令分成清晰区块。设置 `NO_COLOR=1` 可以关闭颜色；JSON 输出永远
 不会包含 ANSI 转义序列。
 
+每次调用都会查询 npm 的 `latest` 标签；发现新版本时，CLI 会在 stderr 输出简短升级提示。registry
+查询失败或超时会静默放行，不会阻断原 Gerrit 操作，也不会破坏 `--json` 的 stdout envelope。
+
 ## 快速开始
 
 ```bash
-# 只检查本地配置，不发起网络请求。
+# 跳过 Gerrit SSH 连通性检查（全局 npm 版本检查仍会执行）。
 gerrit --json doctor --offline
 
 # 预览并安装 Gerrit 官方 Change-Id hook。
