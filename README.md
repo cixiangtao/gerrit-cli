@@ -24,6 +24,10 @@ pnpm add -D @anys/gerrit-cli
 The CLI supports Node.js 14.17 or newer. Node.js 14 and 16 are legacy compatibility targets;
 use a maintained Node.js release when the host project allows it.
 
+Every invocation checks npm's `latest` tag. When a newer release exists, the CLI prints a concise
+upgrade notice to stderr. Registry failures and timeouts stay silent and never block the requested
+Gerrit operation; `--json` stdout remains a single machine-readable envelope.
+
 ## Quick example
 
 ```bash

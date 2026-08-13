@@ -1,4 +1,5 @@
 import { access, readFile, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -273,5 +274,39 @@ describe("CLI", () => {
       bin: { gerrit: "dist/cli.js" },
     });
     expect(result.stdout).toBe(packageJson.version);
+  });
+
+  it("checks the configured npm registry and keeps update notices out of JSON stdout", async () => {
+    const requests: string[] = [];
+    const server = createServer((request, response) => {
+      requests.push(request.url ?? "");
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ version: "99.0.0" }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+
+    try {
+      const address = server.address();
+      if (typeof address !== "object" || address === null) throw new Error("Missing server port.");
+      const packageJson = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf8"));
+      const root = await createRepository();
+      const result = await run(
+        process.execPath,
+        [cliPath, "--json", "-C", root, "status"],
+        projectRoot,
+        { npm_config_registry: `http://127.0.0.1:${address.port}/` },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toMatchObject({ ok: true, command: "status" });
+      expect(result.stderr).toContain(
+        `A newer Gerrit CLI version is available: ${packageJson.version} -> 99.0.0.`,
+      );
+      expect(requests).toEqual(["/%40anys%2Fgerrit-cli/latest"]);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
   });
 });
