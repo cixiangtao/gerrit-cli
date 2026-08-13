@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/cixiangtao/gerrit-cli/compare/v1.2.0...v1.3.0) (2026-08-13)
+
+
+### Features
+
+* **cli:** notify when updates are available ([#26](https://github.com/cixiangtao/gerrit-cli/issues/26)) ([097eba2](https://github.com/cixiangtao/gerrit-cli/commit/097eba2b931023854ec24aab22a04854c87c643e))
+
 ## [1.2.0](https://github.com/cixiangtao/gerrit-cli/compare/v1.1.0...v1.2.0) (2026-08-12)
 
 
