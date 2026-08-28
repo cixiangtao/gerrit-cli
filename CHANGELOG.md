@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/cixiangtao/gerrit-cli/compare/v1.3.0...v1.4.0) (2026-08-28)
+
+
+### Features
+
+* **cli:** add guided Gerrit project cloning ([#29](https://github.com/cixiangtao/gerrit-cli/issues/29)) ([7a44763](https://github.com/cixiangtao/gerrit-cli/commit/7a44763a4913835222764844694349ad24e8ae66))
+
 ## [1.3.0](https://github.com/cixiangtao/gerrit-cli/compare/v1.2.0...v1.3.0) (2026-08-13)
 
 
