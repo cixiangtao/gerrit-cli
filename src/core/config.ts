@@ -1,13 +1,18 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import type { EffectiveConfig, GerritCliConfig, SyncStrategy } from "../types.js";
 import { CliError } from "./errors.js";
 
 const CONFIG_FILE_NAME = ".gerrit-cli.json";
-const GLOBAL_CONFIG_PATH = join(homedir(), ".config", "gerrit-cli", "config.json");
+const DEFAULT_GLOBAL_CONFIG_PATH = join(homedir(), ".config", "gerrit-cli", "config.json");
 const SYNC_STRATEGIES = new Set<SyncStrategy>(["ff-only", "merge", "rebase"]);
+
+const getGlobalConfigPath = () =>
+  process.env.GERRIT_CLI_CONFIG_PATH
+    ? resolve(process.env.GERRIT_CLI_CONFIG_PATH)
+    : DEFAULT_GLOBAL_CONFIG_PATH;
 
 const readConfigFile = async (path: string) => {
   try {
@@ -28,7 +33,7 @@ const readConfigFile = async (path: string) => {
 };
 
 const validateConfig = (config: GerritCliConfig, path: string) => {
-  for (const key of ["remote", "targetBranch", "webUrl"] as const) {
+  for (const key of ["cloneBaseUrl", "remote", "targetBranch", "webUrl"] as const) {
     if (config[key] !== undefined && typeof config[key] !== "string") {
       throw new CliError("INVALID_CONFIG", `Invalid ${key} in ${path}.`, {
         hints: [`${key} must be a string.`],
@@ -50,6 +55,25 @@ const validateConfig = (config: GerritCliConfig, path: string) => {
       });
     }
   }
+  if (config.cloneBaseUrl) {
+    try {
+      const url = new URL(config.cloneBaseUrl);
+      if (
+        !["ssh:", "https:", "http:"].includes(url.protocol) ||
+        url.password ||
+        url.search ||
+        url.hash
+      ) {
+        throw new Error();
+      }
+    } catch {
+      throw new CliError("INVALID_CONFIG", `Invalid cloneBaseUrl in ${path}.`, {
+        hints: [
+          "cloneBaseUrl must be an absolute SSH, HTTP, or HTTPS URL without a password, query, or hash.",
+        ],
+      });
+    }
+  }
   for (const key of ["reviewers", "cc"] as const) {
     if (
       config[key] &&
@@ -64,24 +88,29 @@ const validateConfig = (config: GerritCliConfig, path: string) => {
 };
 
 /** Loads global and repository configuration with repository values taking precedence. */
-export const loadConfig = async (repositoryRoot: string): Promise<EffectiveConfig> => {
+export const loadConfig = async (
+  repositoryRoot: string,
+  globalConfigPath = getGlobalConfigPath(),
+): Promise<EffectiveConfig> => {
   const repositoryPath = join(repositoryRoot, CONFIG_FILE_NAME);
   const [globalConfig, repositoryConfig] = await Promise.all([
-    readConfigFile(GLOBAL_CONFIG_PATH),
+    readConfigFile(globalConfigPath),
     readConfigFile(repositoryPath),
   ]);
   const sources: string[] = [];
-  if (globalConfig) sources.push(GLOBAL_CONFIG_PATH);
+  if (globalConfig) sources.push(globalConfigPath);
   if (repositoryConfig) sources.push(repositoryPath);
 
-  const globalValue = globalConfig ? validateConfig(globalConfig, GLOBAL_CONFIG_PATH) : {};
+  const globalValue = globalConfig ? validateConfig(globalConfig, globalConfigPath) : {};
   const repositoryValue = repositoryConfig ? validateConfig(repositoryConfig, repositoryPath) : {};
 
   const remote = repositoryValue.remote ?? globalValue.remote;
   const targetBranch = repositoryValue.targetBranch ?? globalValue.targetBranch;
   const webUrl = repositoryValue.webUrl ?? globalValue.webUrl;
+  const cloneBaseUrl = repositoryValue.cloneBaseUrl ?? globalValue.cloneBaseUrl;
 
   return {
+    ...(cloneBaseUrl ? { cloneBaseUrl } : {}),
     ...(remote ? { remote } : {}),
     ...(targetBranch ? { targetBranch } : {}),
     syncStrategy: repositoryValue.syncStrategy ?? globalValue.syncStrategy ?? "ff-only",
@@ -92,7 +121,19 @@ export const loadConfig = async (repositoryRoot: string): Promise<EffectiveConfi
   };
 };
 
+/** Persists the default clone base while preserving the user's other global settings. */
+export const saveGlobalCloneBaseUrl = async (cloneBaseUrl: string) => {
+  const globalConfigPath = getGlobalConfigPath();
+  const current = (await readConfigFile(globalConfigPath)) ?? {};
+  const next = validateConfig({ ...current, cloneBaseUrl }, globalConfigPath);
+  await mkdir(dirname(globalConfigPath), { recursive: true, mode: 0o700 });
+  await writeFile(globalConfigPath, `${JSON.stringify(next, null, 2)}\n`, { mode: 0o600 });
+  return globalConfigPath;
+};
+
 export const configPaths = {
-  global: GLOBAL_CONFIG_PATH,
+  get global() {
+    return getGlobalConfigPath();
+  },
   repositoryFileName: CONFIG_FILE_NAME,
 } as const;

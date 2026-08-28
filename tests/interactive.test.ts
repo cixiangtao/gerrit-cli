@@ -18,6 +18,18 @@ describe("interactive root command", () => {
     expect(result).toEqual(["status"]);
   });
 
+  it("collects a project name after clone is selected", async () => {
+    const result = await resolveRootArguments([], {
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      version: "0.1.0",
+      selectCommand: async () => "clone",
+      selectCloneProject: async () => " team/app ",
+    });
+
+    expect(result).toEqual(["clone", "team/app"]);
+  });
+
   it("shows help instead of prompting outside a TTY", async () => {
     const selectCommand = vi.fn(async () => "status" as const);
     const result = await resolveRootArguments([], {
@@ -60,6 +72,7 @@ describe("interactive root command", () => {
     expect(COMMAND_MENU_OPTIONS.map(({ value }) => value)).toEqual([
       "status",
       "doctor",
+      "clone",
       "review",
       "amend",
       "merge",

@@ -31,6 +31,10 @@ Gerrit operation; `--json` stdout remains a single machine-readable envelope.
 ## Quick example
 
 ```bash
+# On first use, the CLI asks for the Gerrit base URL and can save it globally.
+gerrit clone team/app --dry-run
+gerrit clone team/app
+
 gerrit --json doctor --offline
 gerrit setup --dry-run
 gerrit status
@@ -38,6 +42,25 @@ gerrit amend --dry-run
 gerrit merge feature/login --dry-run
 gerrit review alice,bob --dry-run
 ```
+
+The first interactive `gerrit clone team/app` asks for the clone base URL and whether to save it in
+`~/.config/gerrit-cli/config.json`. Later clones only need the project name. When run inside an
+existing Gerrit repository, the CLI first tries to infer the base from that repository's remote.
+`--dry-run` may prompt for a base but never writes the configuration.
+
+The same setting can also be managed manually:
+
+```json
+{
+  "cloneBaseUrl": "ssh://alice@gerrit.example.com:29418",
+  "webUrl": "https://gerrit.example.com"
+}
+```
+
+`cloneBaseUrl` also accepts HTTP or HTTPS. The CLI never stores a password, access token, or refresh
+token; SSH and Git credential helpers remain responsible for authentication. OAuth refresh tokens
+are provider-specific and are not a portable Gerrit authentication mechanism. Use `--base-url` for
+a one-off override without changing configuration.
 
 Repository commands reject ordinary Git remotes before planning or changing anything. The shared
 offline gate recognizes an explicit Gerrit SSH port (`29418`); configure `webUrl` for HTTPS, custom

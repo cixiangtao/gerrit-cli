@@ -24,10 +24,60 @@ describe("CLI", () => {
     expect(result.stdout).toContain(`Gerrit CLI v${version.stdout}`);
     expect(result.stdout).toContain("Usage: gerrit");
     expect(result.stdout).toContain("doctor");
+    expect(result.stdout).toContain("clone");
     expect(result.stdout).toContain("setup");
     expect(result.stdout).toContain("merge");
     expect(result.stdout).toContain("amend");
     expect(result.stdout).toContain("review");
+  });
+
+  it("previews cloning a configured Gerrit project by name", async () => {
+    const root = await createRepository();
+    await writeFile(
+      join(root, ".gerrit-cli.json"),
+      `${JSON.stringify({ cloneBaseUrl: "ssh://alice@gerrit.example.com:29418" }, null, 2)}\n`,
+    );
+    const result = await run(
+      process.execPath,
+      [cliPath, "--json", "-C", root, "clone", "team/app", "custom-app", "--dry-run"],
+      projectRoot,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: true,
+      command: "clone",
+      data: {
+        project: "team/app",
+        url: "ssh://alice@gerrit.example.com:29418/team/app",
+        destination: join(root, "custom-app"),
+        dryRun: true,
+        command: "git clone -- ssh://alice@gerrit.example.com:29418/team/app custom-app",
+      },
+    });
+    await expect(access(join(root, "custom-app"))).rejects.toThrow();
+  });
+
+  it("infers the clone base from an existing Gerrit repository", async () => {
+    const root = await createRepository();
+    const result = await run(
+      process.execPath,
+      [cliPath, "--json", "-C", root, "clone", "team/other", "--dry-run"],
+      projectRoot,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: true,
+      command: "clone",
+      data: {
+        project: "team/other",
+        url: "ssh://test@gerrit.example.com:29418/team/other",
+        baseUrlSource: "repository",
+        configSavedTo: null,
+        dryRun: true,
+      },
+    });
   });
 
   it("shows help for a bare command outside a TTY", async () => {

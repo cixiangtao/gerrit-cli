@@ -82,6 +82,10 @@ npx @anys/gerrit-cli
 ## 快速开始
 
 ```bash
+# 首次使用会询问 Gerrit 基础地址并可保存，之后只需项目名。
+gerrit clone team/app --dry-run
+gerrit clone team/app
+
 # 跳过 Gerrit SSH 连通性检查（全局 npm 版本检查仍会执行）。
 gerrit --json doctor --offline
 
@@ -114,6 +118,7 @@ gerrit review zhangsan,lisi
 
 | 命令                             | 用途                                                 | 是否写入状态     |
 | -------------------------------- | ---------------------------------------------------- | ---------------- |
+| `clone <project> [directory]`    | 使用全局基础地址按项目名克隆 Gerrit 仓库             | 创建目录和仓库   |
 | `doctor [--offline]`             | 检查 Git、仓库、hook、remote 和 SSH 就绪状态         | 否               |
 | `status`                         | 验证 Gerrit remote，并显示项目主页、分支和 hook 状态 | 否               |
 | `setup [--dry-run]`              | 下载并组合 Gerrit 官方 `commit-msg` hook             | 是               |
@@ -219,6 +224,7 @@ gerrit review --dry-run
 
 ```json
 {
+  "cloneBaseUrl": "ssh://zhangsan@gerrit.example.com:29418",
   "remote": "origin",
   "targetBranch": "main",
   "syncStrategy": "ff-only",
@@ -228,7 +234,17 @@ gerrit review --dry-run
 }
 ```
 
-CLI 不保存密码或 Token；Git、SCP 和 SSH 继续使用机器已有的配置与凭据。
+首次在交互式终端执行 `gerrit clone team/app` 时，如果没有可用配置，CLI 会询问 Gerrit 基础地址，
+并询问是否保存到全局配置。之后在任意目录只需提供项目名。如果当前目录已经属于一个 Gerrit
+仓库，CLI 会先尝试从当前分支使用的 remote 自动推导基础地址。`--dry-run` 可以参与首次引导，但
+不会写入配置；`--json` 和非交互环境不会弹出问题，而是提示配置或传入 `--base-url`。
+
+`cloneBaseUrl` 支持 SSH、HTTP 和 HTTPS；未设置时也可以回退到 `webUrl`。项目名会按路径安全校验，
+URL 中不允许嵌入密码。临时使用其他 Gerrit 地址时，可以传 `--base-url <url>` 覆盖配置。
+
+CLI 不保存密码或 Token；Git、SCP 和 SSH 继续使用机器已有的配置与凭据。Gerrit 没有跨部署通用
+的 refresh-token 换取 clone 凭据协议，因此本命令不处理 refresh token，也不会把任何 token 写入
+公共配置或 clone URL。
 
 ## JSON 契约
 

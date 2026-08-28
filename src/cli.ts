@@ -7,6 +7,7 @@ import { Command, Option } from "commander";
 import pc from "picocolors";
 
 import { runAmend, type AmendOptions } from "./commands/amend.js";
+import { runClone, type CloneOptions } from "./commands/clone.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runHook } from "./commands/hook.js";
 import { runMerge, type MergeOptions } from "./commands/merge.js";
@@ -103,6 +104,24 @@ program
   .action(async (options: { offline: boolean }, command: Command) => {
     await run(command, (global, output) => runDoctor(global, output, options));
   });
+
+program
+  .command("clone")
+  .description("Clone a Gerrit project by name using the configured base URL")
+  .argument("<project>", "Gerrit project name, such as app or team/app")
+  .argument("[directory]", "Destination directory")
+  .option("--base-url <url>", "Override the configured Gerrit clone base URL")
+  .option("--dry-run", "Show the clone plan without creating a repository", false)
+  .action(
+    async (
+      project: string,
+      directory: string | undefined,
+      options: CloneOptions,
+      command: Command,
+    ) => {
+      await run(command, (global, output) => runClone(global, output, project, directory, options));
+    },
+  );
 
 addRepositoryOptions(
   program.command("status").description("Show local repository and Gerrit review readiness"),

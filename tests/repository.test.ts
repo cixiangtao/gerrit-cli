@@ -18,10 +18,21 @@ describe("repository inspection", () => {
     const root = await createRepository();
     await writeFile(
       join(root, ".gerrit-cli.json"),
-      `${JSON.stringify({ targetBranch: "develop", syncStrategy: "rebase" }, null, 2)}\n`,
+      `${JSON.stringify(
+        {
+          cloneBaseUrl: "ssh://alice@gerrit.example.com:29418",
+          targetBranch: "develop",
+          syncStrategy: "rebase",
+        },
+        null,
+        2,
+      )}\n`,
     );
 
-    await expect(loadConfig(root)).resolves.toMatchObject({
+    await expect(
+      loadConfig(root, join(root, ".missing-global-config.json")),
+    ).resolves.toMatchObject({
+      cloneBaseUrl: "ssh://alice@gerrit.example.com:29418",
       targetBranch: "develop",
       syncStrategy: "rebase",
       sources: [join(root, ".gerrit-cli.json")],
@@ -32,13 +43,15 @@ describe("repository inspection", () => {
     const root = await createRepository();
     await writeFile(join(root, ".gerrit-flow.json"), "not valid JSON\n");
 
-    await expect(loadConfig(root)).resolves.toMatchObject({ syncStrategy: "ff-only" });
+    await expect(
+      loadConfig(root, join(root, ".missing-global-config.json")),
+    ).resolves.toMatchObject({ syncStrategy: "ff-only" });
   });
 
   it("resolves tracking metadata and outgoing Change-Ids", async () => {
     const root = await createRepository();
     await addReviewCommit(root);
-    const config = await loadConfig(root);
+    const config = await loadConfig(root, join(root, ".missing-global-config.json"));
     const repository = await resolveRepositoryContext(root, config);
 
     expect(repository.remote).toBe("origin");

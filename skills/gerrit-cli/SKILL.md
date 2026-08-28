@@ -32,6 +32,13 @@ gerrit --json setup --dry-run
 gerrit setup
 ```
 
+To clone, preview the destination first. Interactive first use can prompt for and save the base URL:
+
+```bash
+gerrit --json clone team/app --dry-run
+gerrit clone team/app
+```
+
 For a review push, preview the exact target and refspec first:
 
 ```bash
@@ -59,7 +66,11 @@ Rules:
 - Use explicit subcommands in automation; reserve the bare interactive menu for human terminal use.
 - Use `npx --yes @anys/gerrit-cli` only after verifying that the public package exists.
 - Run `doctor --offline` and `status` before write commands.
-- Use `--dry-run` before `setup`, `merge`, `sync`, `review`, or `open`.
+- Use `--dry-run` before `clone`, `setup`, `merge`, `sync`, `review`, or `open`.
+- In non-interactive or JSON use, require `cloneBaseUrl`, `webUrl`, an inferable Gerrit remote, or
+  an explicit `--base-url`; never attempt an interactive setup in automation.
+- Leave clone authentication to SSH or the configured Git credential helper; never place a password
+  or token in a clone URL.
 - Keep the default `ff-only` merge strategy unless the user explicitly chooses `ff` or `no-ff`.
 - Do not pass `--yes`, perform a live merge, change history strategy, install hooks, or push a review without user authorization.
 - Do not manufacture a commit or merge to bypass `NO_NEW_CHANGES`.
