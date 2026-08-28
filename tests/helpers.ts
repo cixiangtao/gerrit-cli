@@ -15,6 +15,7 @@ export const run = async (
 ) => {
   const environment: NodeJS.ProcessEnv = {
     ...process.env,
+    GERRIT_CLI_CONFIG_PATH: join(tmpdir(), `gerrit-cli-test-${process.pid}-config.json`),
     NO_COLOR: "1",
     npm_config_registry: "http://127.0.0.1:9/",
     ...environmentOverrides,

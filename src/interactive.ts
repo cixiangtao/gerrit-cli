@@ -1,8 +1,9 @@
-import { cancel, intro, isCancel, select } from "@clack/prompts";
+import { cancel, intro, isCancel, select, text } from "@clack/prompts";
 
 const INTERACTIVE_COMMANDS = [
   "status",
   "doctor",
+  "clone",
   "review",
   "amend",
   "merge",
@@ -30,6 +31,11 @@ export const COMMAND_MENU_OPTIONS = [
     value: "doctor",
     label: "doctor",
     hint: "Check Git, hook, remote, and SSH readiness · read-only",
+  },
+  {
+    value: "clone",
+    label: "clone",
+    hint: "Clone a configured Gerrit project by name · creates a repository",
   },
   {
     value: "review",
@@ -73,6 +79,7 @@ interface InteractiveContext {
   stdoutIsTTY?: boolean;
   version: string;
   selectCommand?: () => Promise<InteractiveCommand | symbol>;
+  selectCloneProject?: () => Promise<string | symbol>;
 }
 
 /** Formats the title shared by the interactive menu and versioned CLI release. */
@@ -90,6 +97,16 @@ const selectCommand = async (version: string) => {
   return command;
 };
 
+const selectCloneProject = async () => {
+  const project = await text({
+    message: "Gerrit project name",
+    placeholder: "team/app",
+    validate: (value) => (value.trim() ? undefined : "Enter a Gerrit project name."),
+  });
+  if (isCancel(project)) cancel("Operation cancelled.");
+  return project;
+};
+
 /** Resolves a bare CLI invocation to an interactive selection or non-TTY help. */
 export const resolveRootArguments = async (
   args: readonly string[],
@@ -99,5 +116,9 @@ export const resolveRootArguments = async (
   if (!context.stdinIsTTY || !context.stdoutIsTTY) return ["--help"];
 
   const command = await (context.selectCommand ?? (() => selectCommand(context.version)))();
-  return typeof command === "symbol" ? null : [command];
+  if (typeof command === "symbol") return null;
+  if (command !== "clone") return [command];
+
+  const project = await (context.selectCloneProject ?? selectCloneProject)();
+  return typeof project === "symbol" ? null : [command, project.trim()];
 };

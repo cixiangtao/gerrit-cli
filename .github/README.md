@@ -85,6 +85,10 @@ Human-readable output groups checks, summaries, and commands into distinct secti
 ## Quick start
 
 ```bash
+# First use can prompt for and save the Gerrit base URL.
+gerrit clone team/app --dry-run
+gerrit clone team/app
+
 # Inspect local configuration without making a network request.
 gerrit --json doctor --offline
 
@@ -182,6 +186,7 @@ Configuration precedence is:
 
 ```json
 {
+  "cloneBaseUrl": "ssh://alice@gerrit.example.com:29418",
   "remote": "origin",
   "targetBranch": "main",
   "syncStrategy": "ff-only",
@@ -191,8 +196,17 @@ Configuration precedence is:
 }
 ```
 
+On the first interactive use, `gerrit clone team/app` asks for the clone base URL and whether to save
+it globally. Later clones only need the project name. Inside an existing Gerrit repository, the CLI
+first tries to infer the base from the current branch's remote. `--dry-run` never saves configuration,
+and non-interactive or JSON runs return setup guidance instead of prompting.
+
+SSH, HTTP, and HTTPS bases are supported; when `cloneBaseUrl` is omitted, `webUrl` can be used as an
+HTTPS clone base. Passwords cannot be embedded in the URL. Use `--base-url` for a one-off override.
+
 The CLI does not store passwords or tokens. Git, SCP, and SSH continue to use credentials already
-configured on the machine.
+configured on the machine. Gerrit does not define one portable refresh-token flow for Git clone;
+OAuth refresh tokens remain specific to an identity provider.
 
 ## JSON contract
 

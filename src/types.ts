@@ -1,6 +1,8 @@
 export type SyncStrategy = "ff-only" | "merge" | "rebase";
 
 export interface GerritCliConfig {
+  /** Base URL used to clone a project by name, such as ssh://alice@gerrit.example.com:29418. */
+  cloneBaseUrl?: string;
   /** Git remote used to fetch and push changes. */
   remote?: string;
   /** Gerrit target branch. Defaults to the current branch's upstream branch. */
@@ -16,6 +18,7 @@ export interface GerritCliConfig {
 }
 
 export interface EffectiveConfig {
+  cloneBaseUrl?: string;
   remote?: string;
   targetBranch?: string;
   syncStrategy: SyncStrategy;
